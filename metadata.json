@@ -1,0 +1,6 @@
+{
+  "name": "Messaging Web Client",
+  "description": "A high-performance, polished mobile and desktop messaging application designed with Tailwind CSS and Inter typography.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
