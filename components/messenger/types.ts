@@ -1,6 +1,7 @@
 export interface Message {
   sender: 'me' | 'receiver' | string;
   senderName?: string;
+  senderAvatar?: string;
   text: string;
   time: string;
   isImage?: boolean;
@@ -24,6 +25,7 @@ export interface ChatThread {
   messages: Message[];
   topic?: string;
   members?: Contact[];
+  isAdmin?: boolean;
 }
 
 export interface Contact {

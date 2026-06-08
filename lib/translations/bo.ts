@@ -1,0 +1,93 @@
+export const bo = {
+  // Auth View
+  nextChat: "ནེཀསི་ཊི་སྐད་ཆ།",
+  connectSecureServer: "im.tibcert.org བཙན་པོའི་སེར་བར་མཐུད་རྒྱུ།",
+  username: "སྤྱོད་མིང་།",
+  enterUsername: "སྤྱོད་མིང་འཇུག་རོགས།",
+  password: "གསང་ཚིག",
+  enterPassword: "••••••••",
+  signIn: "ནང་དུ་འཛུལ།",
+  signingIn: "འཛུལ་བཞིན་པ།...",
+  register: "ཐོ་འགོད།",
+  creatingAccount: "རྩིས་ཐོ་གསར་བཟོ་བྱེད་བཞིན་པ།...",
+  newUser: "སེར་བར་འདིར་གསར་དུ་ཡོང་བ་ཡིན་ནམ།",
+  alreadyHaveAccount: "རྩིས་ཐོ་ཡོད་ཚར་བ་ཡིན་ནམ།",
+  registerAccount: "རྩིས་ཐོ་གསར་བཟོ།",
+  logIn: "ནང་དུ་འཛུལ།",
+  encryptionEnabled: "མེ་ཊརིགསི་གསང་བཟོ་བཀོལ་སྤྱོད་བྱས་ཡོད།",
+  changeAvatar: "མགོ་བརྙན་བརྗེ་རྒྱུ།",
+  fillCredentials: "ལག་འཁྱེར་ཚང་མ་འཇུག་རོགས།",
+  incorrectCredentials: "སྤྱོད་མིང་ངམ་གསང་ཚིག་ནོར་འདུག",
+  usernameExists: "སྤྱོད་མིང་འདི་བཀོལ་སྤྱོད་བྱས་ཚར་འདུག",
+  connectionError: "མཐུད་ལམ་ལ་སྐྱོན་འདུག བསྐྱར་དུ་མཐུད་རོགས།",
+
+  // Tabs
+  chatsTab: "སྐད་ཆ།",
+  discoverTab: "འཚོལ་ཞིབ།",
+  profileTab: "སྒྲིག་བཀོད།",
+
+  // Connection Status
+  connectionStatusLabel: "API མཐུད་ལམ།",
+  offline: "དྲ་མེད།",
+  connecting: "མཐུད་བཞིན་པ།...",
+  synchronized: "མཐུད་ཟིན་པ།",
+
+  // Sidebar Threads
+  searchConversations: "གླེང་མོལ་འཚོལ་བ།...",
+  recentActivity: "ཉེ་བའི་བྱ་གཞག",
+  noConversations: "གླེང་མོལ་མ་རྙེད།",
+  createGroupTooltip: "ཚོགས་པ་བཟོ་བ།",
+
+  // Discover
+  discoverColleagues: "རོགས་པ་འཚོལ་བ།",
+  searchColleagues: "རོགས་པ་འཚོལ་བ།...",
+  suggestedContacts: "འོས་སྦྱོར་བྱས་པའི་རོགས་པ།",
+  seeAll: "ཚང་མ་ལྟ་རྒྱུ།",
+  sendChat: "ཡིག་འཕྲིན་གཏོང་།",
+  matrixUser: "མེ་ཊརིགསི་སྤྱོད་མིང་།",
+  connect: "མཐུད་རྒྱུ།",
+  connected: "མཐུད་ཟིན་པ།",
+  noContactsFound: "རོགས་པ་མ་རྙེད།",
+  teamContactsListing: "རོགས་པའི་ཐོ་གཞུང་།",
+  oneToOne: "མི་སྒེར་སྐད་ཆ།",
+  rooms: "ཚོགས་པའི་གླེང་མོལ་ཁང་།",
+
+  // New Group
+  createSquadChannel: "སྡེ་ཚན་གསར་བཟོ།",
+  squadName: "སྡེ་ཚན་གྱི་མིང་།",
+  enterSquadName: "སྡེ་ཚན་གྱི་མིང་འཇུག་རོགས།...",
+  searchContactsToInvite: "གདན་འདྲེན་ཞུ་རྒྱུའི་རོགས་པ་འཚོལ་བ།...",
+  selectContacts: "རོགས་པ་འདེམས་རྒྱུ།",
+  createChannel: "གླེང་མོལ་ཁང་བཟོ་བ།",
+  cancel: "ཕྱིར་འཐེན།",
+
+  // Chat View
+  noMessages: "ད་ལྟ་གླེང་མོལ་མི་འདུག",
+  typeMessage: "ཡིག་འཕྲིན་གཏོང་རོགས།...",
+  workspaceDeck: "ལས་ཀའི་འབྲེལ་མཐུད་སྟེགས་བུ།",
+  workspaceDeckDesc: "རོགས་པ་ཚོ་དང་མཉམ་དུ་བདེ་བླག་ངང་འབྲེལ་བ་མཐུད་ཐུབ། ཚོགས་པ་གསར་བཟོ་དང་། ལས་ཀའི་རེའུ་མིག་བགོ་སྐལ་བྱེད་པ། མངོན་ཚུལ་སྒྲིག་བཀོད་བཅས་བྱེད་ཐུབ།",
+  localSession: "ས་གནས་ལག་འཁྱེར།",
+  autoSaved: "རང་འགུལ་ཉར་ཚགས།",
+
+  // Profile Settings
+  activeSettings: "སྒྲིག་བཀོད་དང་སྒེར་གྱི་ལོ་རྒྱུས།",
+  saveChanges: "ཉར་ཚགས་བྱེད་རྒྱུ།",
+  saved: "ཉར་ཟིན་པ།",
+  identityCoordinates: "ངོ་ཐོབ་ས་གནས།",
+  displayName: "མངོན་པའི་མིང་།",
+  professionalTitle: "ལས་གནས།",
+  emailAddress: "གློག་འཕྲིན་ཁ་བྱང་།",
+  routingPhone: "ཁ་པར་ཨང་གྲངས།",
+  systemPreferences: "རྒྱུད་ཁོངས་སྒྲིག་བཀོད།",
+  darkMode: "མཚན་མོའི་རྣམ་པ།",
+  toggleThemeDesc: "བཀོལ་སྤྱོད་མངོན་ཚུལ་གྱི་བརྗོད་གཞི་བརྗེ་རྒྱུ།",
+  readReceipts: "ཀློག་པའི་རྟགས།",
+  broadcastReceiptsDesc: "ཀློག་པའི་རྟགས་གསལ་བཤད་བྱེད་རྒྱུ།",
+  twoFactor: "ཉིས་བརྩེགས་ངོ་སྤྲོད།",
+  twoFactorDesc: "སྒེར་གྱི་གསང་ཨང་བརྟན་པོར་ཉར་རྒྱུ།",
+  privacyRegulations: "གསང་དོན་སྒྲིག་གཞི།",
+  supportCenter: "རོགས་རམ་ལྟེ་གནས།",
+  logoutSession: "ཕྱིར་འཐེན་བྱེད་རྒྱུ།",
+  language: "སྐད་རིགས།",
+  toggleLanguage: "སྐད་རིགས་བརྗེ་རྒྱུ་ (བོད་སྐད་ / English)"
+};

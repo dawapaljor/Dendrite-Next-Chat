@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatThread } from "./types";
+import { translations, Language } from "@/lib/translations";
 
 interface SidebarThreadsProps {
   threads: ChatThread[];
@@ -15,6 +16,7 @@ interface SidebarThreadsProps {
   onSearchChange: (val: string) => void;
   onSelectThread: (id: string) => void;
   onNewGroupClick?: () => void;
+  lang: Language;
 }
 
 export default function SidebarThreads({
@@ -23,7 +25,8 @@ export default function SidebarThreads({
   searchQuery,
   onSearchChange,
   onSelectThread,
-  onNewGroupClick
+  onNewGroupClick,
+  lang
 }: SidebarThreadsProps) {
   const filteredThreads = threads.filter(thread =>
     thread.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -38,77 +41,74 @@ export default function SidebarThreads({
           <Input
             id="sidebar-chat-search"
             type="text"
-            placeholder="Search conversations..."
+            placeholder={translations[lang].searchConversations}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-8 text-xs h-9 bg-muted/50 border-input"
           />
           <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
         </div>
-        
+
         {onNewGroupClick && (
           <button
             onClick={onNewGroupClick}
-            className="p-2 bg-[#0076FF] text-white rounded-lg hover:bg-blue-600 transition active:scale-95 text-xs font-semibold flex items-center justify-center shrink-0 h-9"
-            title="Create Group"
+            className="p-2 text-brand rounded-lg hover:bg-brand-light hover:text-brand-light-foreground transition active:scale-95 text-xs font-semibold flex items-center justify-center shrink-0 h-9"
+            title={translations[lang].createGroupTooltip}
           >
             {/* Pen Square svg */}
-            <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </button>
         )}
       </div>
 
-      <div className="px-4 py-2 bg-muted/20 text-[10px] tracking-wider uppercase font-bold text-muted-foreground">
-        Recent Activity
+      <div className="px-4 py-4 bg-muted/20 text-[10px] tracking-wider uppercase font-bold text-muted-foreground">
+        {translations[lang].recentActivity}
       </div>
 
       {/* Threads List with custom scroll area */}
       <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
+        <div className="flex flex-col">
           {filteredThreads.map((thread) => {
             const isActive = activeId === thread.id;
             return (
               <div
                 key={thread.id}
                 onClick={() => onSelectThread(thread.id)}
-                className={`flex items-center gap-3 p-3 rounded-xl transition cursor-pointer select-none ${
-                  isActive
-                    ? 'bg-[#ececff]/80 dark:bg-muted/80'
-                    : 'hover:bg-muted/30'
-                }`}
+                className={`flex items-center gap-3 px-4 py-3.5 transition cursor-pointer select-none border-b border-border/10 dark:border-border/5 last:border-b-0 ${isActive
+                  ? 'bg-brand-light/60 dark:bg-muted/50'
+                  : 'hover:bg-muted/20'
+                  }`}
               >
                 {/* Avatar with dynamic fallback */}
                 <div className="relative shrink-0">
-                  <Avatar className={`h-10 w-10 border border-muted-foreground/10 transition-all ${
-                    thread.isGroup ? 'rounded-xl' : 'rounded-full'
-                  }`}>
-                    <AvatarImage 
-                      src={thread.avatar} 
-                      alt={thread.name} 
-                      className={`object-cover ${thread.isGroup ? 'rounded-xl' : 'rounded-full'}`} 
-                    />
-                    <AvatarFallback className={`text-xs font-bold font-mono transition-all ${
-                      thread.isGroup 
-                        ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200 rounded-xl' 
-                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 rounded-full'
+                  <Avatar className={`h-12 w-12 border border-muted-foreground/10 transition-all ${thread.isGroup ? 'rounded-xl' : 'rounded-full'
                     }`}>
+                    <AvatarImage
+                      src={thread.avatar}
+                      alt={thread.name}
+                      className={`object-cover ${thread.isGroup ? 'rounded-xl' : 'rounded-full'}`}
+                    />
+                    <AvatarFallback className={`text-sm font-bold font-mono transition-all ${thread.isGroup
+                      ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200 rounded-xl'
+                      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 rounded-full'
+                      }`}>
                       {thread.initials || thread.name.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  
+
                   {/* Status Indicator Badge (Only for DMs) */}
                   {!thread.isGroup && (
                     <>
                       {thread.online === true && (
-                        <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-card" />
+                        <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-card" />
                       )}
                       {thread.online === 'typing' && (
-                        <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-card animate-pulse" />
+                        <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-brand ring-2 ring-card animate-pulse" />
                       )}
                       {thread.online === 'offline' && (
-                        <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-muted-foreground/30 ring-2 ring-card" />
+                        <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-muted-foreground/30 ring-2 ring-card" />
                       )}
                     </>
                   )}
@@ -134,7 +134,7 @@ export default function SidebarThreads({
 
                 {/* Unread Pill */}
                 {thread.unreadCount > 0 && (
-                  <Badge variant="default" className="h-5 min-w-5 px-1 bg-[#0076FF] hover:bg-[#0076FF] text-white text-[9px] font-bold rounded-full flex items-center justify-center shrink-0">
+                  <Badge variant="default" className="h-5 min-w-5 px-1 bg-brand hover:bg-brand text-brand-foreground text-[9px] font-bold rounded-full flex items-center justify-center shrink-0">
                     {thread.unreadCount}
                   </Badge>
                 )}
@@ -143,7 +143,7 @@ export default function SidebarThreads({
           })}
 
           {filteredThreads.length === 0 && (
-            <div className="py-8 text-center text-xs text-muted-foreground">No conversations found</div>
+            <div className="py-8 text-center text-xs text-muted-foreground">{translations[lang].noConversations}</div>
           )}
         </div>
       </ScrollArea>

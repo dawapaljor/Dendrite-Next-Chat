@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  MessageSquare, 
-  Compass, 
-  User, 
+import {
+  MessageSquare,
+  Compass,
+  User,
   Laptop,
   Users,
   Bell,
@@ -23,6 +23,7 @@ import DiscoverContacts from "./discover-contacts";
 import ProfileSettings from "./profile-settings";
 import NewGroupView from "./new-group-view";
 import { ChatThread, Contact, ProfileSettings as ProfileSettingsType } from "./types";
+import { translations, Language } from "@/lib/translations";
 
 interface DesktopViewProps {
   appTheme: 'light' | 'dark';
@@ -41,6 +42,7 @@ interface DesktopViewProps {
   profileSettings: ProfileSettingsType;
   setProfileSettings: React.Dispatch<React.SetStateAction<ProfileSettingsType>>;
   onSaveProfile: () => void;
+  isSavingProfile?: boolean;
   hasSavedIndicator: boolean;
   groupName: string;
   setGroupName: (val: string) => void;
@@ -55,6 +57,13 @@ interface DesktopViewProps {
   isTyping: boolean;
   onLogout?: () => void;
   connectionStatus?: string;
+  lang: Language;
+  setLang: (l: Language) => void;
+  onChangePassword?: (oldPass: string, newPass: string) => Promise<void>;
+  onUpdateRoomDetails?: (roomId: string, updates: { name?: string; topic?: string; avatarFile?: File }) => Promise<void>;
+  onInviteUser?: (roomId: string, userId: string) => Promise<void>;
+  onRemoveUser?: (roomId: string, userId: string) => Promise<void>;
+  onLeaveRoom?: (roomId: string) => Promise<void>;
 }
 
 export default function DesktopView({
@@ -74,6 +83,7 @@ export default function DesktopView({
   profileSettings,
   setProfileSettings,
   onSaveProfile,
+  isSavingProfile,
   hasSavedIndicator,
   groupName,
   setGroupName,
@@ -87,7 +97,14 @@ export default function DesktopView({
   onSendMessage: onSendMessage,
   isTyping: isTyping,
   onLogout: onLogout,
-  connectionStatus: connectionStatus
+  connectionStatus: connectionStatus,
+  lang,
+  setLang,
+  onChangePassword,
+  onUpdateRoomDetails,
+  onInviteUser,
+  onRemoveUser,
+  onLeaveRoom
 }: DesktopViewProps) {
   // Mode inside desktop screen to decide if we are showing Group creator
   const [isCreatingGroup, setIsCreatingGroup] = useState<boolean>(false);
@@ -97,7 +114,7 @@ export default function DesktopView({
     <div className="w-full h-screen flex flex-col select-none bg-[#f4f5f9] dark:bg-[#101424]">
       {/* Desktop Wrapper Layout resembling standard high-fidelity client */}
       <div className="w-full flex-1 flex overflow-hidden bg-card text-card-foreground">
-        
+
         {/* PANEL 1: STATIC ICON SIDEBAR */}
         <div className="hidden md:flex w-16 bg-[#18181c] dark:bg-[#0c0d12] flex-col justify-between items-center py-4 shrink-0 border-r border-muted/20">
           <div className="flex flex-col items-center gap-6 w-full">
@@ -115,15 +132,14 @@ export default function DesktopView({
                     setDesktopScreen('chats');
                     setIsCreatingGroup(false);
                   }}
-                  className={`p-2.5 rounded-xl transition flex justify-center w-full cursor-pointer bg-transparent border-0 outline-none ${
-                    desktopScreen === 'chats' && !isCreatingGroup
-                      ? 'bg-[#0076FF] text-white' 
+                  className={`p-2.5 rounded-xl transition flex justify-center w-full cursor-pointer bg-transparent border-0 outline-none ${desktopScreen === 'chats' && !isCreatingGroup
+                      ? 'bg-white text-slate-950 font-bold'
                       : 'text-slate-400 hover:bg-[#2e2e38] hover:text-white'
-                  }`}
+                    }`}
                 >
                   <MessageSquare className="h-5 w-5" />
                 </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs">Conversations</TooltipContent>
+                <TooltipContent side="right" className="text-xs">{translations[lang].chatsTab}</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -133,15 +149,14 @@ export default function DesktopView({
                     setDesktopScreen('discover');
                     setIsCreatingGroup(false);
                   }}
-                  className={`p-2.5 rounded-xl transition flex justify-center w-full cursor-pointer bg-transparent border-0 outline-none ${
-                    desktopScreen === 'discover' 
-                      ? 'bg-[#0076FF] text-white' 
+                  className={`p-2.5 rounded-xl transition flex justify-center w-full cursor-pointer bg-transparent border-0 outline-none ${desktopScreen === 'discover'
+                      ? 'bg-white text-slate-950 font-bold'
                       : 'text-slate-400 hover:bg-[#2e2e38] hover:text-white'
-                  }`}
+                    }`}
                 >
                   <Compass className="h-5 w-5" />
                 </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs">Discover Colleagues</TooltipContent>
+                <TooltipContent side="right" className="text-xs">{translations[lang].discoverTab}</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -151,15 +166,14 @@ export default function DesktopView({
                     setDesktopScreen('profile');
                     setIsCreatingGroup(false);
                   }}
-                  className={`p-2.5 rounded-xl transition flex justify-center w-full cursor-pointer bg-transparent border-0 outline-none ${
-                    desktopScreen === 'profile' 
-                      ? 'bg-[#0076FF] text-white' 
+                  className={`p-2.5 rounded-xl transition flex justify-center w-full cursor-pointer bg-transparent border-0 outline-none ${desktopScreen === 'profile'
+                      ? 'bg-white text-slate-950 font-bold'
                       : 'text-slate-400 hover:bg-[#2e2e38] hover:text-white'
-                  }`}
+                    }`}
                 >
                   <User className="h-5 w-5" />
                 </TooltipTrigger>
-                <TooltipContent side="right" className="text-xs">Preferences</TooltipContent>
+                <TooltipContent side="right" className="text-xs">{translations[lang].profileTab}</TooltipContent>
               </Tooltip>
             </div>
           </div>
@@ -167,9 +181,11 @@ export default function DesktopView({
           {/* User profile avatar toggle at base */}
           <div className="flex flex-col items-center gap-4">
             <div className="relative">
-              <Avatar className="h-9 w-9 border border-gray-700">
-                <AvatarImage src={profileSettings.avatarUrl || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200&h=200"} alt="Me" className="object-cover" />
-                <AvatarFallback>{profileSettings.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+              <Avatar className="h-9 w-9 border border-gray-700 rounded-full">
+                <AvatarImage src={profileSettings.avatarUrl} alt="Me" className="object-cover rounded-full" />
+                <AvatarFallback className="bg-[#e4ebff] text-slate-800 text-xs font-bold rounded-full">
+                  {profileSettings.username ? profileSettings.username.substring(0, 2).toUpperCase() : 'ME'}
+                </AvatarFallback>
               </Avatar>
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#18181c]" />
             </div>
@@ -177,11 +193,10 @@ export default function DesktopView({
         </div>
 
         {/* PANEL 2: SWITCHABLE MIDDLE PANEL */}
-        <div className={`border-r border-muted flex flex-col bg-card relative ${
-          isMobileChatActive && desktopScreen === 'chats' && !isCreatingGroup
-            ? 'hidden md:flex md:w-80 md:shrink-0' 
+        <div className={`border-r border-muted flex flex-col bg-card relative ${isMobileChatActive && desktopScreen === 'chats' && !isCreatingGroup
+            ? 'hidden md:flex md:w-80 md:shrink-0'
             : 'flex w-full md:w-80 md:shrink-0 h-full'
-        }`}>
+          }`}>
           <div className="flex-1 min-h-0 relative">
             {isCreatingGroup ? (
               <NewGroupView
@@ -198,6 +213,7 @@ export default function DesktopView({
                   setIsCreatingGroup(false);
                   setIsMobileChatActive(true);
                 }}
+                lang={lang}
               />
             ) : desktopScreen === 'chats' ? (
               <SidebarThreads
@@ -210,10 +226,12 @@ export default function DesktopView({
                   setIsMobileChatActive(true);
                 }}
                 onNewGroupClick={() => setIsCreatingGroup(true)}
+                lang={lang}
               />
             ) : desktopScreen === 'discover' ? (
               <DiscoverContacts
                 contacts={contacts}
+                chats={chats}
                 searchQuery={discoverSearchQuery}
                 onSearchChange={setDiscoverSearchQuery}
                 onConnectChat={(id) => {
@@ -221,16 +239,26 @@ export default function DesktopView({
                   setDesktopScreen('chats');
                   setIsMobileChatActive(true);
                 }}
+                onConnectRoom={(roomId) => {
+                  setActiveChatId(roomId);
+                  setDesktopScreen('chats');
+                  setIsMobileChatActive(true);
+                }}
+                lang={lang}
               />
             ) : (
               <ProfileSettings
                 settings={profileSettings}
                 onSettingsChange={setProfileSettings}
                 onSave={onSaveProfile}
+                isSaving={isSavingProfile}
                 hasSavedIndicator={hasSavedIndicator}
                 appTheme={appTheme}
                 onToggleTheme={onToggleTheme}
                 onLogout={onLogout}
+                lang={lang}
+                setLang={setLang}
+                onChangePassword={onChangePassword}
               />
             )}
           </div>
@@ -242,46 +270,47 @@ export default function DesktopView({
                 setDesktopScreen('chats');
                 setIsCreatingGroup(false);
               }}
-              className={`flex flex-col items-center gap-0.5 py-1 transition bg-transparent border-0 outline-none cursor-pointer ${
-                desktopScreen === 'chats' && !isCreatingGroup ? 'text-[#0076FF]' : 'text-muted-foreground'
-              }`}
+              className={`flex flex-col items-center gap-0.5 py-1 transition bg-transparent border-0 outline-none cursor-pointer ${desktopScreen === 'chats' && !isCreatingGroup ? 'text-brand' : 'text-muted-foreground'
+                }`}
             >
               <MessageSquare className="h-4.5 w-4.5" />
-              <span className="text-[9px] font-bold">Chats</span>
+              <span className="text-[9px] font-bold">{translations[lang].chatsTab}</span>
             </button>
             <button
               onClick={() => {
                 setDesktopScreen('discover');
                 setIsCreatingGroup(false);
               }}
-              className={`flex flex-col items-center gap-0.5 py-1 transition bg-transparent border-0 outline-none cursor-pointer ${
-                desktopScreen === 'discover' ? 'text-[#0076FF]' : 'text-muted-foreground'
-              }`}
+              className={`flex flex-col items-center gap-0.5 py-1 transition bg-transparent border-0 outline-none cursor-pointer ${desktopScreen === 'discover' ? 'text-brand' : 'text-muted-foreground'
+                }`}
             >
               <Compass className="h-4.5 w-4.5" />
-              <span className="text-[9px] font-bold">Discover</span>
+              <span className="text-[9px] font-bold">{translations[lang].discoverTab}</span>
             </button>
             <button
               onClick={() => {
                 setDesktopScreen('profile');
                 setIsCreatingGroup(false);
               }}
-              className={`flex flex-col items-center gap-0.5 py-1 transition bg-transparent border-0 outline-none cursor-pointer ${
-                desktopScreen === 'profile' ? 'text-[#0076FF]' : 'text-muted-foreground'
-              }`}
+              className={`flex flex-col items-center gap-0.5 py-1 transition bg-transparent border-0 outline-none cursor-pointer ${desktopScreen === 'profile' ? 'text-brand' : 'text-muted-foreground'
+                }`}
             >
-              <User className="h-4.5 w-4.5" />
-              <span className="text-[9px] font-bold">Profile</span>
+              <Avatar className="h-4.5 w-4.5 border border-muted-foreground/25 rounded-full shrink-0">
+                <AvatarImage src={profileSettings.avatarUrl} alt="Me" className="object-cover rounded-full" />
+                <AvatarFallback className="bg-brand-light text-brand-light-foreground text-[8px] font-bold rounded-full flex items-center justify-center">
+                  {profileSettings.username ? profileSettings.username.substring(0, 2).toUpperCase() : 'ME'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-[9px] font-bold">{translations[lang].profileTab}</span>
             </button>
           </div>
         </div>
 
         {/* PANEL 3: CONSTANT BIG RIGHT CHAT VIEW STAGE */}
-        <div className={`min-w-0 bg-muted/5 flex-col justify-between h-full relative ${
-          isMobileChatActive && desktopScreen === 'chats' && !isCreatingGroup
+        <div className={`min-w-0 bg-muted/5 flex-col justify-between h-full relative ${isMobileChatActive && desktopScreen === 'chats' && !isCreatingGroup
             ? 'flex flex-1'
             : 'hidden md:flex md:flex-1'
-        }`}>
+          }`}>
           {desktopScreen === 'chats' && activeChat && !isCreatingGroup ? (
             <ChatView
               activeChat={activeChat}
@@ -290,34 +319,41 @@ export default function DesktopView({
               onSendMessage={onSendMessage}
               isTyping={isTyping}
               onBackClick={() => setIsMobileChatActive(false)}
+              lang={lang}
+              onUpdateRoomDetails={onUpdateRoomDetails}
+              onInviteUser={onInviteUser}
+              onRemoveUser={onRemoveUser}
+              onLeaveRoom={onLeaveRoom}
             />
           ) : (
             /* Blank overview guidelines screen when nothing active */
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#fcfdff] dark:bg-[#121626]">
-              <div className="h-16 w-16 rounded-full bg-blue-100 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center mb-4">
+              <div className="h-16 w-16 rounded-full bg-brand-light text-brand flex items-center justify-center mb-4">
                 <Laptop className="h-8 w-8" />
               </div>
               <h3 className="font-bold text-sm tracking-tight mb-2 text-foreground">
-                Workspace Communication Deck
+                {translations[lang].workspaceDeck}
               </h3>
               <p className="text-xs text-muted-foreground max-w-sm mb-6 leading-relaxed">
-                Connect seamlessly with cross-functional experts. Create instant squads, share metrics dashboards, and customize display settings.
+                {translations[lang].workspaceDeckDesc}
               </p>
 
               {/* Status details */}
               <div className="grid grid-cols-2 gap-3 max-w-xs w-full text-left text-[11px] text-muted-foreground">
-                <div className="bg-card p-2.5 rounded-xl border flex items-center gap-1.5 shadow-2xs">
+                <div className="bg-card  rounded-xl border flex items-center gap-1.5 shadow-2xs">
                   <CheckCircle className={`h-4 w-4 shrink-0 ${connectionStatus === 'Offline' ? 'text-rose-500' : connectionStatus === 'Connecting...' ? 'text-amber-550' : 'text-emerald-500'}`} />
                   <div>
-                    <span className="font-semibold block text-foreground">API Connection</span>
-                    <span className="text-[10px]">{connectionStatus || 'Synchronized'}</span>
+                    <span className="font-semibold block text-foreground">{translations[lang].connectionStatusLabel}</span>
+                    <span className="text-[10px]">
+                      {connectionStatus === 'Offline' ? translations[lang].offline : connectionStatus === 'Connecting...' ? translations[lang].connecting : translations[lang].synchronized}
+                    </span>
                   </div>
                 </div>
                 <div className="bg-card p-2.5 rounded-xl border flex items-center gap-1.5 shadow-2xs">
-                  <Clock className="h-4 w-4 text-[#0076FF] shrink-0" />
+                  <Clock className="h-4 w-4 text-brand shrink-0" />
                   <div>
-                    <span className="font-semibold block text-foreground">Local Session</span>
-                    <span className="text-[10px]">Auto-saved</span>
+                    <span className="font-semibold block text-foreground">{translations[lang].localSession}</span>
+                    <span className="text-[10px]">{translations[lang].autoSaved}</span>
                   </div>
                 </div>
               </div>

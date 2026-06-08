@@ -6,6 +6,7 @@ import { ChatThread, Contact, ProfileSettings } from "@/components/messenger/typ
 import AuthView from "@/components/messenger/auth-view";
 import { getMatrixClient, clearMatrixClient, getStoredSession } from "@/lib/matrix";
 import type { MatrixClient, MatrixEvent } from "matrix-js-sdk";
+import { translations, Language } from "@/lib/translations";
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const originalError = console.error;
@@ -21,6 +22,7 @@ export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [matrixClient, setMatrixClient] = useState<MatrixClient | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string>('Offline');
+  const [lang, setLang] = useState<Language>('en');
 
   const [appTheme, setAppTheme] = useState<'light' | 'dark'>('light');
 
@@ -57,12 +59,32 @@ export default function Home() {
   });
   
   const [hasSavedIndicator, setHasSavedIndicator] = useState<boolean>(false);
+  const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
+
+  const activeChatIdRef = useRef<string>('');
+  const readRoomEventIds = useRef<Record<string, string>>({});
+  const profileSettingsRef = useRef<ProfileSettings>(profileSettings);
+  const syncStateRef = useRef<() => void>(() => {});
+
+  // Sync activeChatId to ref to avoid stale closures in the Matrix sync loop
+  useEffect(() => {
+    activeChatIdRef.current = activeChatId;
+  }, [activeChatId]);
+
+  // Sync profileSettings to ref to avoid stale closures in the Matrix sync loop
+  useEffect(() => {
+    profileSettingsRef.current = profileSettings;
+  }, [profileSettings]);
 
   // Initial load from localstorage cache
   useEffect(() => {
     const savedTheme = localStorage.getItem('saas_theme');
     const savedProfile = localStorage.getItem('saas_profile');
+    const savedLang = localStorage.getItem('app_language');
     
+    if (savedLang === 'en' || savedLang === 'bo') {
+      setLang(savedLang);
+    }
     if (savedTheme === 'light' || savedTheme === 'dark') {
       setAppTheme(savedTheme);
     }
@@ -100,7 +122,7 @@ export default function Home() {
         const accountData = accountEvent ? accountEvent.getContent() : {};
 
         const avatarUrl = profile.avatar_url 
-          ? (matrixClient.mxcUrlToHttp(profile.avatar_url, 96, 96, "scale") || undefined)
+          ? (matrixClient.mxcUrlToHttp(profile.avatar_url) || undefined)
           : undefined;
 
         setProfileSettings(prev => ({
@@ -125,14 +147,49 @@ export default function Home() {
       return user.presence === 'online' || user.currentlyActive === true;
     };
 
+    const isRoomDirect = (roomId: string) => {
+      // 1. Check account data m.direct first
+      const directEvent = matrixClient.getAccountData("m.direct");
+      if (directEvent) {
+        const content = directEvent.getContent();
+        for (const userId in content) {
+          if (Array.isArray(content[userId]) && content[userId].includes(roomId)) {
+            return true;
+          }
+        }
+      }
+
+      // 2. Fallback check: DMs have <= 2 members and do NOT have an explicit room name state event set
+      const room = matrixClient.getRoom(roomId);
+      if (room) {
+        const nameEvent = room.currentState.getStateEvents("m.room.name", "");
+        const members = room.getJoinedMembers();
+        if (!nameEvent && members.length <= 2) {
+          return true;
+        }
+      }
+
+      return false;
+    };
+
     const syncState = () => {
       if (!active) return;
       
-      const rooms = matrixClient.getRooms();
+      const rooms = matrixClient.getRooms().filter(room => room.getMyMembership() === "join");
       
       const mappedRooms: ChatThread[] = rooms.map(room => {
         const members = room.getJoinedMembers();
-        const displayName = room.name || room.roomId;
+        const isDirect = isRoomDirect(room.roomId);
+        let displayName = room.name || room.roomId;
+        if (isDirect && members.length <= 2) {
+          const otherMember = members.find(m => m.userId !== matrixClient.getUserId());
+          if (otherMember && otherMember.name) {
+            displayName = otherMember.name;
+          }
+        }
+        if (displayName.startsWith('@') && displayName.includes(':')) {
+          displayName = displayName.split(':')[0].substring(1);
+        }
         const timeline = room.getLiveTimeline().getEvents();
         
         const mappedMessages = timeline
@@ -141,10 +198,22 @@ export default function Home() {
             const content = event.getContent();
             const senderId = event.getSender();
             const isMe = senderId === matrixClient.getUserId();
-            const senderName = senderId ? (room.getMember(senderId)?.name || senderId) : 'Unknown';
+            const senderMember = senderId ? room.getMember(senderId) : null;
+            const senderName = senderMember?.name || senderId || 'Unknown';
+            let senderAvatar = '';
+            if (isMe) {
+              senderAvatar = profileSettingsRef.current.avatarUrl || '';
+            } else {
+              const senderMxc = senderMember?.getMxcAvatarUrl();
+              senderAvatar = senderMxc 
+                ? matrixClient.mxcUrlToHttp(senderMxc) || ''
+                : '';
+            }
+
             return {
               sender: isMe ? 'me' : 'receiver',
               senderName: senderName,
+              senderAvatar: senderAvatar,
               text: content.body || '',
               time: new Date(event.getTs()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               isImage: content.msgtype === "m.image"
@@ -158,16 +227,29 @@ export default function Home() {
         const topicEvent = room.currentState.getStateEvents("m.room.topic", "");
         const topic = topicEvent ? topicEvent.getContent().topic : "";
 
+        const selfUserId = matrixClient.getUserId();
+        const selfMember = selfUserId ? room.getMember(selfUserId) : null;
+        const isAdmin = selfMember ? selfMember.powerLevel >= 100 : false;
+
         const mappedMembers: Contact[] = members.map(m => {
           const memberMxcUrl = m.getMxcAvatarUrl();
           const memberAvatarUrl = memberMxcUrl 
-            ? matrixClient.mxcUrlToHttp(memberMxcUrl, 96, 96, "scale") || undefined
+            ? matrixClient.mxcUrlToHttp(memberMxcUrl) || undefined
             : undefined;
+
+          let displayRole = 'Member';
+          if (m.userId === matrixClient.getUserId()) {
+            displayRole = m.powerLevel >= 100 ? 'Admin (Me)' : 'Me';
+          } else if (m.powerLevel >= 100) {
+            displayRole = 'Admin';
+          } else if (m.powerLevel >= 50) {
+            displayRole = 'Moderator';
+          }
 
           return {
             id: m.userId,
             name: m.name || m.userId,
-            role: m.userId === matrixClient.getUserId() ? 'Me' : 'Member',
+            role: displayRole,
             avatar: memberAvatarUrl || '',
             online: getUserOnlineStatus(m.userId)
           };
@@ -176,19 +258,51 @@ export default function Home() {
         const otherMember = room.getJoinedMembers().find(m => m.userId !== matrixClient.getUserId());
         const isOnline = otherMember ? getUserOnlineStatus(otherMember.userId) : false;
 
+        const lastEvent = timeline.length > 0 ? timeline[timeline.length - 1] : null;
+        const lastEventId = lastEvent?.getId();
+        const locallyReadEventId = readRoomEventIds.current[room.roomId];
+
+        let unreadCount = room.getUnreadNotificationCount("total" as any);
+        if (room.roomId === activeChatIdRef.current) {
+          unreadCount = 0;
+        } else if (locallyReadEventId && lastEventId === locallyReadEventId) {
+          unreadCount = 0;
+        }
+
+        let roomAvatar = '';
+        const roomAvatarMxc = room.getAvatarUrl(matrixClient.baseUrl, 96, 96, 'scale');
+        if (roomAvatarMxc) {
+          const httpUrl = matrixClient.mxcUrlToHttp(roomAvatarMxc);
+          if (httpUrl) {
+            roomAvatar = httpUrl;
+          }
+        }
+
+        if (!roomAvatar && members.length <= 2) {
+          const otherMember = members.find(m => m.userId !== matrixClient.getUserId());
+          const otherMemberMxc = otherMember?.getMxcAvatarUrl();
+          if (otherMemberMxc) {
+            const httpUrl = matrixClient.mxcUrlToHttp(otherMemberMxc);
+            if (httpUrl) {
+              roomAvatar = httpUrl;
+            }
+          }
+        }
+
         return {
           id: room.roomId,
           name: displayName,
-          avatar: '',
+          avatar: roomAvatar,
           initials: displayName.split(' ').map(n => n[0]).join('').slice(0, 3).toUpperCase(),
           lastMessage: lastMsgText,
           time: lastMsgTime,
-          unreadCount: room.getUnreadNotificationCount("total" as any),
+          unreadCount: unreadCount,
           online: isOnline ? true : 'offline',
-          isGroup: members.length > 2,
+          isGroup: !isDirect,
           messages: mappedMessages,
           topic: topic,
-          members: mappedMembers
+          members: mappedMembers,
+          isAdmin: isAdmin
         };
       });
 
@@ -202,7 +316,7 @@ export default function Home() {
           
           const memberMxcUrl = member.getMxcAvatarUrl();
           const memberAvatarUrl = memberMxcUrl 
-            ? matrixClient.mxcUrlToHttp(memberMxcUrl, 96, 96, "scale") || undefined
+            ? matrixClient.mxcUrlToHttp(memberMxcUrl) || undefined
             : undefined;
 
           mappedContactsMap.set(member.userId, {
@@ -227,6 +341,8 @@ export default function Home() {
           return mappedRooms[0].id;
         });
       }
+      
+      syncStateRef.current = syncState;
     };
 
     const onSync = (state: string, prevState: string | null) => {
@@ -319,6 +435,55 @@ export default function Home() {
     };
   }, [matrixClient]);
 
+  // Send read receipt when active chat changes or new messages arrive in active chat
+  useEffect(() => {
+    if (!matrixClient || !activeChatId) return;
+
+    const sendReadReceipt = async () => {
+      const room = matrixClient.getRoom(activeChatId);
+      if (!room) return;
+
+      const timeline = room.getLiveTimeline().getEvents();
+      if (timeline.length === 0) return;
+      
+      const lastEvent = timeline[timeline.length - 1];
+      const lastEventId = lastEvent.getId();
+      if (lastEventId) {
+        readRoomEventIds.current[activeChatId] = lastEventId;
+      }
+
+      try {
+        await matrixClient.sendReadReceipt(lastEvent);
+        // Clear unread count locally for instant UI update
+        setChats(prev => prev.map(chat => {
+          if (chat.id === activeChatId && chat.unreadCount > 0) {
+            return { ...chat, unreadCount: 0 };
+          }
+          return chat;
+        }));
+      } catch (err) {
+        console.error("Failed to send Matrix read receipt:", err);
+      }
+    };
+
+    sendReadReceipt();
+
+    // Listen for new messages in this room to mark them as read
+    const onRoomTimeline = (event: MatrixEvent) => {
+      if (event.getRoomId() === activeChatId && event.getType() === "m.room.message") {
+        sendReadReceipt();
+      }
+    };
+
+    matrixClient.on("Room.timeline" as any, onRoomTimeline);
+
+    return () => {
+      if (matrixClient) {
+        matrixClient.removeListener("Room.timeline" as any, onRoomTimeline);
+      }
+    };
+  }, [matrixClient, activeChatId]);
+
   // Discover Matrix server directory users when search query changes or on startup
   useEffect(() => {
     if (!matrixClient || !isAuthenticated) return;
@@ -341,7 +506,7 @@ export default function Home() {
         // Map Matrix user directory results to Contact type
         const directoryContacts: Contact[] = results.map((u, idx) => {
           const avatarUrl = u.avatar_url 
-            ? matrixClient.mxcUrlToHttp(u.avatar_url, 96, 96, "scale") || undefined
+            ? matrixClient.mxcUrlToHttp(u.avatar_url) || undefined
             : undefined;
 
           // Retrieve user online state using global user store helper
@@ -396,10 +561,24 @@ export default function Home() {
     setChats([]);
     setActiveChatId('');
     setConnectionStatus('Offline');
+    
+    // Clear local profile storage and reset profileSettings to default values
+    localStorage.removeItem('saas_profile');
+    setProfileSettings({
+      username: '',
+      role: '',
+      email: '',
+      phone: '',
+      language: 'English (United States)',
+      twoFactor: true,
+      readReceipts: true,
+      avatarUrl: undefined
+    });
   };
 
   const handleSaveProfile = async () => {
-    localStorage.setItem('saas_profile', JSON.stringify(profileSettings));
+    setIsSavingProfile(true);
+    let updatedProfile = { ...profileSettings };
     
     if (matrixClient) {
       const userId = matrixClient.getUserId();
@@ -408,6 +587,28 @@ export default function Home() {
           const profile = await matrixClient.getProfileInfo(userId);
           if (profileSettings.username && profileSettings.username !== profile.displayname) {
             await matrixClient.setDisplayName(profileSettings.username);
+          }
+
+          // Upload custom SVG avatar to Matrix homeserver media repository
+          if (profileSettings.avatarUrl && profileSettings.avatarUrl.startsWith('/avatar/')) {
+            try {
+              const res = await fetch(profileSettings.avatarUrl);
+              const blob = await res.blob();
+              const filename = profileSettings.avatarUrl.split('/').pop() || 'avatar.svg';
+              const uploadResult = await matrixClient.uploadContent(blob, {
+                type: "image/svg+xml",
+                name: filename,
+              });
+              if (uploadResult && uploadResult.content_uri) {
+                await matrixClient.setAvatarUrl(uploadResult.content_uri);
+                const httpUrl = matrixClient.mxcUrlToHttp(uploadResult.content_uri);
+                if (httpUrl) {
+                  updatedProfile.avatarUrl = httpUrl;
+                }
+              }
+            } catch (uploadErr) {
+              console.error("Failed to upload custom avatar SVG to Matrix media repository:", uploadErr);
+            }
           }
 
           const accountDataContent = {
@@ -425,6 +626,10 @@ export default function Home() {
       }
     }
 
+    setProfileSettings(updatedProfile);
+    localStorage.setItem('saas_profile', JSON.stringify(updatedProfile));
+
+    setIsSavingProfile(false);
     setHasSavedIndicator(true);
     setTimeout(() => {
       setHasSavedIndicator(false);
@@ -519,6 +724,115 @@ export default function Home() {
     );
   };
 
+  const handleChangePassword = async (oldPass: string, newPass: string) => {
+    if (!matrixClient) {
+      throw new Error("Matrix client not initialized");
+    }
+
+    const userId = matrixClient.getUserId();
+    if (!userId) {
+      throw new Error("User ID not found");
+    }
+
+    try {
+      const authDict: any = {
+        type: "m.login.password",
+        identifier: {
+          type: "m.id.user",
+          user: userId,
+        },
+        password: oldPass,
+      };
+
+      try {
+        await matrixClient.setPassword(authDict, newPass, true);
+      } catch (err: any) {
+        if (err.httpStatus === 401 && err.data && err.data.session) {
+          const session = err.data.session;
+          const authDictWithSession = {
+            ...authDict,
+            session,
+          };
+          await matrixClient.setPassword(authDictWithSession, newPass, true);
+        } else {
+          throw err;
+        }
+      }
+    } catch (err: any) {
+      console.error("Failed to change password:", err);
+      const message = err.data?.error || err.message || JSON.stringify(err);
+      throw new Error(message);
+    }
+  };
+
+  const handleUpdateRoomDetails = async (roomId: string, updates: { name?: string; topic?: string; avatarFile?: File }) => {
+    if (!matrixClient) return;
+    try {
+      if (updates.name !== undefined) {
+        await matrixClient.setRoomName(roomId, updates.name);
+      }
+      if (updates.topic !== undefined) {
+        await matrixClient.setRoomTopic(roomId, updates.topic);
+      }
+      if (updates.avatarFile !== undefined) {
+        const uploadResult = await matrixClient.uploadContent(updates.avatarFile, {
+          type: updates.avatarFile.type,
+          name: updates.avatarFile.name,
+        });
+        if (uploadResult && uploadResult.content_uri) {
+          await matrixClient.sendStateEvent(roomId, "m.room.avatar" as any, { url: uploadResult.content_uri }, "");
+        }
+      }
+      if (syncStateRef.current) {
+        syncStateRef.current();
+      }
+    } catch (err) {
+      console.error("Failed to update room details:", err);
+      throw err;
+    }
+  };
+
+  const handleInviteUserToRoom = async (roomId: string, userId: string) => {
+    if (!matrixClient) return;
+    try {
+      const targetUserId = userId.startsWith('@') ? userId : `@${userId}:im.tibcert.org`;
+      await matrixClient.invite(roomId, targetUserId);
+      if (syncStateRef.current) {
+        syncStateRef.current();
+      }
+    } catch (err) {
+      console.error("Failed to invite user to room:", err);
+      throw err;
+    }
+  };
+
+  const handleRemoveUserFromRoom = async (roomId: string, userId: string) => {
+    if (!matrixClient) return;
+    try {
+      await matrixClient.kick(roomId, userId);
+      if (syncStateRef.current) {
+        syncStateRef.current();
+      }
+    } catch (err) {
+      console.error("Failed to remove/kick user from room:", err);
+      throw err;
+    }
+  };
+
+  const handleLeaveRoom = async (roomId: string) => {
+    if (!matrixClient) return;
+    try {
+      await matrixClient.leave(roomId);
+      setActiveChatId('');
+      if (syncStateRef.current) {
+        syncStateRef.current();
+      }
+    } catch (err) {
+      console.error("Failed to leave room:", err);
+      throw err;
+    }
+  };
+
   if (!isAuthenticated) {
     return <AuthView onAuthSuccess={handleAuthSuccess} />;
   }
@@ -528,7 +842,7 @@ export default function Home() {
   return (
     <div className={`h-screen w-full relative transition duration-200 overflow-hidden flex ${
       appTheme === 'dark' ? 'dark bg-[#101424] text-gray-100' : 'bg-[#f4f5f9] text-[#10193d]'
-    }`}>
+    } ${lang === 'bo' ? 'lang-bo' : ''}`}>
       <DesktopView
         appTheme={appTheme}
         onToggleTheme={handleToggleTheme}
@@ -546,6 +860,7 @@ export default function Home() {
         profileSettings={profileSettings}
         setProfileSettings={setProfileSettings}
         onSaveProfile={handleSaveProfile}
+        isSavingProfile={isSavingProfile}
         hasSavedIndicator={hasSavedIndicator}
         groupName={groupName}
         setGroupName={setGroupName}
@@ -560,6 +875,13 @@ export default function Home() {
         isTyping={isTyping}
         onLogout={handleLogout}
         connectionStatus={connectionStatus}
+        lang={lang}
+        setLang={setLang}
+        onChangePassword={handleChangePassword}
+        onUpdateRoomDetails={handleUpdateRoomDetails}
+        onInviteUser={handleInviteUserToRoom}
+        onRemoveUser={handleRemoveUserFromRoom}
+        onLeaveRoom={handleLeaveRoom}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Contact } from "./types";
+import { translations, Language } from "@/lib/translations";
 
 interface NewGroupViewProps {
   contacts: Contact[];
@@ -17,6 +18,7 @@ interface NewGroupViewProps {
   onToggleContact: (id: string) => void;
   onClose: () => void;
   onConfirm: () => void;
+  lang: Language;
 }
 
 export default function NewGroupView({
@@ -28,7 +30,8 @@ export default function NewGroupView({
   selectedGroupContacts,
   onToggleContact,
   onClose,
-  onConfirm
+  onConfirm,
+  lang
 }: NewGroupViewProps) {
   
   // Filter contacts by keyword
@@ -45,23 +48,23 @@ export default function NewGroupView({
           <ArrowLeft className="h-4.5 w-4.5 text-muted-foreground" />
         </button>
         <div className="flex items-center gap-1.5 min-w-0">
-          <div className="p-1 bg-blue-100 text-[#0076FF] dark:bg-blue-900/40 dark:text-blue-200 rounded">
+          <div className="p-1 bg-brand-light text-brand rounded">
             <Users className="h-4 w-4" />
           </div>
-          <h3 className="font-bold text-sm truncate">Group Creation Option</h3>
+          <h3 className="font-bold text-sm truncate">{translations[lang].createSquadChannel}</h3>
         </div>
       </div>
-
+ 
       <div className="p-4 space-y-4 flex-1 flex flex-col min-h-0 bg-muted/5">
         {/* Name input */}
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase block">
-            GROUP CHANNEL NAME
+            {translations[lang].squadName}
           </label>
           <Input
             type="text"
             required
-            placeholder="e.g. Design Alignment Team"
+            placeholder={translations[lang].enterSquadName}
             value={groupName}
             onChange={(e) => onGroupNameChange(e.target.value)}
             className="text-xs h-9 bg-card"
@@ -71,13 +74,13 @@ export default function NewGroupView({
         {/* Search contacts for checklist */}
         <div className="space-y-1.5 flex-1 flex flex-col min-h-0 min-w-0">
           <label className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase block">
-            ADD TEAM PARTICIPANTS ({selectedGroupContacts.length} Selected)
+            {translations[lang].selectContacts} ({selectedGroupContacts.length})
           </label>
           
           <div className="relative">
             <Input
               type="text"
-              placeholder="Search team roster..."
+              placeholder={translations[lang].searchContactsToInvite}
               value={groupSearch}
               onChange={(e) => onGroupSearchChange(e.target.value)}
               className="pl-8 text-xs h-9 bg-card"
@@ -98,7 +101,7 @@ export default function NewGroupView({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Avatar className="h-8 w-8 shrink-0">
                         <AvatarImage src={co.avatar} alt={co.name} className="object-cover" />
-                        <AvatarFallback className="bg-blue-100 text-blue-800 text-xs font-bold">
+                        <AvatarFallback className="bg-brand-light text-brand-light-foreground text-xs font-bold">
                           {co.name.substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -111,7 +114,7 @@ export default function NewGroupView({
                     {/* Checkbox indicator */}
                     <div className={`h-4.5 w-4.5 rounded border flex items-center justify-center transition shrink-0 ${
                       isChecked 
-                        ? 'bg-[#0076FF] border-[#0076FF] text-white' 
+                        ? 'bg-brand border-brand text-brand-foreground' 
                         : 'border-muted-foreground/30 bg-card'
                     }`}>
                       {isChecked && <Check className="h-3 w-3" />}
@@ -122,24 +125,24 @@ export default function NewGroupView({
 
               {filtered.length === 0 && (
                 <div className="py-8 text-center text-xs text-muted-foreground">
-                  No colleagues match search.
+                  {translations[lang].noContactsFound}
                 </div>
               )}
             </div>
           </ScrollArea>
         </div>
-
+ 
         {/* Action button */}
         <button
           onClick={onConfirm}
           disabled={selectedGroupContacts.length === 0}
           className={`w-full py-2.5 rounded-xl font-bold text-xs transition active:scale-[0.98] ${
             selectedGroupContacts.length > 0
-              ? 'bg-[#0076FF] text-white hover:bg-blue-600 shadow'
+              ? 'bg-brand text-brand-foreground hover:bg-brand-hover shadow'
               : 'bg-muted text-muted-foreground cursor-not-allowed'
           }`}
         >
-          Create Group
+          {translations[lang].createChannel}
         </button>
       </div>
     </div>
