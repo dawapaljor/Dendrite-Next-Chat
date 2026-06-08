@@ -18,7 +18,6 @@ import {
   Edit
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { ChatThread } from "./types";
 import { translations, Language } from "@/lib/translations";
@@ -256,7 +255,7 @@ export default function ChatView({
         </div>
 
         {/* Messages Stream area with custom scroll */}
-        <ScrollArea className="flex-1 w-full bg-muted/10">
+        <div className="flex-1 w-full bg-muted/10 overflow-y-auto">
           <div className="px-4 py-4 space-y-3">
             <div className="text-center my-2">
               <span className="text-[9px] tracking-wide bg-muted text-muted-foreground py-0.5 px-2.5 rounded-full font-semibold uppercase">
@@ -399,7 +398,7 @@ export default function ChatView({
 
             <div ref={scrollRef} />
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Input Section */}
         <div className="p-3 border-t bg-card flex items-center gap-1.5">
@@ -451,7 +450,7 @@ export default function ChatView({
           </div>
 
           {/* Panel Body */}
-          <ScrollArea className="flex-1 bg-muted/5">
+          <div className="flex-1 bg-muted/5 overflow-y-auto">
             {isEditingDetails ? (
               <div className="w-full space-y-4 px-4 py-4 border-b border-muted/20 pb-5 bg-card">
                 {/* Edit Avatar */}
@@ -694,7 +693,7 @@ export default function ChatView({
                 )}
               </div>
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Danger Zone / Room Actions */}
           {activeChat.isGroup && onLeaveRoom && (
