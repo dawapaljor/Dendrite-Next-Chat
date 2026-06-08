@@ -19,7 +19,8 @@ export default function AuthView({ onAuthSuccess }: AuthViewProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) {
+    const cleanUsername = username.trim().toLowerCase();
+    if (!cleanUsername || !password.trim()) {
       setErrorMsg("Please fill in all credentials.");
       return;
     }
@@ -29,9 +30,9 @@ export default function AuthView({ onAuthSuccess }: AuthViewProps) {
 
     try {
       if (isLogin) {
-        await loginMatrixUser(username.trim(), password);
+        await loginMatrixUser(cleanUsername, password);
       } else {
-        await registerMatrixUser(username.trim(), password);
+        await registerMatrixUser(cleanUsername, password);
       }
       onAuthSuccess();
     } catch (err: any) {
@@ -83,6 +84,8 @@ export default function AuthView({ onAuthSuccess }: AuthViewProps) {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Username</label>
               <Input
                 type="text"
+                name="username"
+                autoComplete="username"
                 placeholder="Enter username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -95,6 +98,8 @@ export default function AuthView({ onAuthSuccess }: AuthViewProps) {
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Password</label>
               <Input
                 type="password"
+                name="password"
+                autoComplete={isLogin ? "current-password" : "new-password"}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
