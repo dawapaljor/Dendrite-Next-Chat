@@ -34,6 +34,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ChatThread, ProfileSettings } from "./types";
 import { translations, Language } from "@/lib/translations";
+import { FEATURE_FLAGS } from "@/lib/config";
 
 const EMOJI_CATEGORIES = [
   {
@@ -944,7 +945,7 @@ export default function ChatView({
                           </a>
                         )}
                       </div>
-                    ) : m.isContactCard ? (
+                    ) : m.isContactCard && FEATURE_FLAGS.enableContactCardSharing ? (
                       <div className="w-64 md:w-72 bg-card border border-muted/30 rounded-2xl overflow-hidden shadow-md flex flex-col hover:border-brand/40 transition duration-300">
                         {/* Card Header with gradient background */}
                         <div className="bg-linear-to-r from-brand/15 to-purple-500/5 p-3 flex items-center gap-3 border-b border-muted/15">
@@ -1083,8 +1084,8 @@ export default function ChatView({
                         {(() => {
                           const urls = detectUrls(m.text);
                           const firstUrl = urls[0];
-                          const hasImagePreview = firstUrl && isImageOrGifUrl(firstUrl);
-                          const hasLinkPreview = firstUrl && !hasImagePreview;
+                          const hasImagePreview = FEATURE_FLAGS.enableLinkPreviews && firstUrl && isImageOrGifUrl(firstUrl);
+                          const hasLinkPreview = FEATURE_FLAGS.enableLinkPreviews && firstUrl && !hasImagePreview;
 
                           return (
                             <>
@@ -1174,7 +1175,7 @@ export default function ChatView({
           )}
 
           {/* Emoji Picker Popover */}
-          {isEmojiPickerOpen && (
+          {FEATURE_FLAGS.enableEmojiPicker && isEmojiPickerOpen && (
             <div
               ref={emojiPickerRef}
               className="absolute bottom-16 right-3 z-50 w-72 h-80 bg-card/95 border border-muted/30 shadow-2xl rounded-2xl flex flex-col overflow-hidden backdrop-blur-md animate-in slide-in-from-bottom-4 fade-in duration-200"
@@ -1240,49 +1241,57 @@ export default function ChatView({
               ref={mediaDropdownRef}
               className="absolute bottom-16 left-3 z-50 w-48 bg-card/95 border border-muted/30 shadow-xl rounded-xl p-1.5 flex flex-col gap-1 backdrop-blur-md animate-in slide-in-from-bottom-2 fade-in duration-150"
             >
-              <button
-                onClick={() => {
-                  setMediaDropdownOpen(false);
-                  imageInputRef.current?.click();
-                }}
-                className="w-full px-2.5 py-1.5 hover:bg-muted text-xs font-semibold rounded-lg text-left transition flex items-center gap-2 text-foreground cursor-pointer border-none bg-transparent"
-              >
-                <Image className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                <span>{lang === 'en' ? 'Upload Image / Video' : 'པར་དང་བརྙན་ལེན།'}</span>
-              </button>
-              <button
-                onClick={() => {
-                  setMediaDropdownOpen(false);
-                  fileInputRef.current?.click();
-                }}
-                className="w-full px-2.5 py-1.5 hover:bg-muted text-xs font-semibold rounded-lg text-left transition flex items-center gap-2 text-foreground cursor-pointer border-none bg-transparent"
-              >
-                <Paperclip className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                <span>{lang === 'en' ? 'Upload Document' : 'ཡིག་ཆ་སྦྲག་རྒྱུ།'}</span>
-              </button>
-              <button
-                onClick={() => {
-                  setMediaDropdownOpen(false);
-                  setIsContactCardModalOpen(true);
-                }}
-                className="w-full px-2.5 py-1.5 hover:bg-muted text-xs font-semibold rounded-lg text-left transition flex items-center gap-2 text-foreground cursor-pointer border-none bg-transparent"
-              >
-                <Users className="w-3.5 h-3.5 text-brand shrink-0" />
-                <span>{lang === 'en' ? 'Share Contact Card' : 'འབྲེལ་གཏུག་བྱང་བུ་བགོ་སྐལ།'}</span>
-              </button>
+              {FEATURE_FLAGS.enableMediaAttachments && (
+                <>
+                  <button
+                    onClick={() => {
+                      setMediaDropdownOpen(false);
+                      imageInputRef.current?.click();
+                    }}
+                    className="w-full px-2.5 py-1.5 hover:bg-muted text-xs font-semibold rounded-lg text-left transition flex items-center gap-2 text-foreground cursor-pointer border-none bg-transparent"
+                  >
+                    <Image className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span>{lang === 'en' ? 'Upload Image / Video' : 'པར་དང་བརྙན་ལེན།'}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMediaDropdownOpen(false);
+                      fileInputRef.current?.click();
+                    }}
+                    className="w-full px-2.5 py-1.5 hover:bg-muted text-xs font-semibold rounded-lg text-left transition flex items-center gap-2 text-foreground cursor-pointer border-none bg-transparent"
+                  >
+                    <Paperclip className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>{lang === 'en' ? 'Upload Document' : 'ཡིག་ཆ་སྦྲག་རྒྱུ།'}</span>
+                  </button>
+                </>
+              )}
+              {FEATURE_FLAGS.enableContactCardSharing && (
+                <button
+                  onClick={() => {
+                    setMediaDropdownOpen(false);
+                    setIsContactCardModalOpen(true);
+                  }}
+                  className="w-full px-2.5 py-1.5 hover:bg-muted text-xs font-semibold rounded-lg text-left transition flex items-center gap-2 text-foreground cursor-pointer border-none bg-transparent"
+                >
+                  <Users className="w-3.5 h-3.5 text-brand shrink-0" />
+                  <span>{lang === 'en' ? 'Share Contact Card' : 'འབྲེལ་གཏུག་བྱང་བུ་བགོ་སྐལ།'}</span>
+                </button>
+              )}
             </div>
           )}
 
           {/* Core Input Row */}
           <div className="flex items-center gap-1.5 w-full">
-            <button
-              onClick={() => setMediaDropdownOpen(!mediaDropdownOpen)}
-              className={`p-1.5 rounded-full transition cursor-pointer border-none bg-transparent shrink-0 ${mediaDropdownOpen ? 'bg-brand/10 text-brand' : 'text-muted-foreground hover:text-brand hover:bg-muted'}`}
-              title={lang === 'en' ? "Attach assets" : "ཡིག་ཆ་སྦྲག་རྒྱུ།"}
-              disabled={isRecording}
-            >
-              <Plus className="h-5 w-5" />
-            </button>
+            {(FEATURE_FLAGS.enableMediaAttachments || FEATURE_FLAGS.enableContactCardSharing) && (
+              <button
+                onClick={() => setMediaDropdownOpen(!mediaDropdownOpen)}
+                className={`p-1.5 rounded-full transition cursor-pointer border-none bg-transparent shrink-0 ${mediaDropdownOpen ? 'bg-brand/10 text-brand' : 'text-muted-foreground hover:text-brand hover:bg-muted'}`}
+                title={lang === 'en' ? "Attach assets" : "ཡིག་ཆ་སྦྲག་རྒྱུ།"}
+                disabled={isRecording}
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            )}
 
             {isRecording ? (
               <div className="flex-1 bg-rose-500/10 dark:bg-rose-950/20 border border-rose-500/30 rounded-xl px-3 py-1.5 flex items-center justify-between transition-all duration-300">
@@ -1330,15 +1339,17 @@ export default function ChatView({
                 />
                 
                 <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
-                  <button
-                    onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
-                    className={`text-muted-foreground hover:text-foreground transition p-0.5 cursor-pointer border-none bg-transparent ${isEmojiPickerOpen ? 'text-brand' : ''}`}
-                    title={lang === 'en' ? "Add emoji" : "མཚོན་རྟགས་སྦྲག་རྒྱུ།"}
-                  >
-                    <Smile className="h-4.5 w-4.5" />
-                  </button>
+                  {FEATURE_FLAGS.enableEmojiPicker && (
+                    <button
+                      onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
+                      className={`text-muted-foreground hover:text-foreground transition p-0.5 cursor-pointer border-none bg-transparent ${isEmojiPickerOpen ? 'text-brand' : ''}`}
+                      title={lang === 'en' ? "Add emoji" : "མཚོན་རྟགས་སྦྲག་རྒྱུ།"}
+                    >
+                      <Smile className="h-4.5 w-4.5" />
+                    </button>
+                  )}
                   
-                  {onSendMediaMessage && (
+                  {FEATURE_FLAGS.enableVoiceMessages && onSendMediaMessage && (
                     <button
                       onClick={startRecording}
                       className="text-muted-foreground hover:text-brand transition p-0.5 cursor-pointer border-none bg-transparent"

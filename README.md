@@ -10,6 +10,12 @@ A high-fidelity, modern collaborative chat client built with **Next.js 15**, **R
 *   **🔑 Secure Authentication Wall**: A premium gateway to register new accounts or log into existing ones on the homeserver. Bypasses the login overlay instantly if session tokens exist in client LocalStorage.
 *   **🛠️ Group Channel provisioner**: Dialog modal allowing users to select multiple active colleagues, invite them, and initialize private multi-user room workspaces.
 *   **🧭 Discovered Teammates**: Integrates local mock teammates alongside active Matrix users in the contact directory. Clicking "Connect" on local mocks automatically computes and invites their respective homeserver addresses (e.g., `@alex:im.tibcert.org`).
+*   **😀 Searchable Emoji Picker**: Integrated category-based emoji popover supporting smileys, people, nature, activities, and searchable filters.
+*   **🎙️ Voice Message Recorder**: Native audio recording using the browser `MediaRecorder` API with dynamic timing indicators and a custom waveform progress player.
+*   **📎 Asset Attachment Uploads**: Dynamic image, video, and general document uploader with progress overlays and full-screen image lightbox support.
+*   **🔗 Link & GIF Previews**: Autodetects URLs to render inline image/GIF media and rich Microlink-powered site metadata cards.
+*   **📇 Contact Card Sharing & Copying**: Share selectable identity coordinates (email, phone, title) with an interactive live card preview and right-aligned toggles. Includes inline copy-to-clipboard icons inside the chat card.
+*   **⚙️ Global Feature Config Flags**: Control and toggle individual chat features statically or via environment variables (`NEXT_PUBLIC_ENABLE_...`).
 *   **🎨 Personalized Design**: Rich dark/light layouts synchronized with global CSS variable mappings and custom component themes.
 *   **💾 Local Storage Cache**: Stores active display preferences and profile metadata securely inside the client's browser.
 
@@ -129,12 +135,29 @@ Run the user creation script bundled with your Dendrite setup:
 ├── hooks/
 │   └── use-mobile.ts        # Responsive layout device hook
 ├── lib/
+│   ├── config.ts            # Global feature configuration toggles and overrides
 │   ├── matrix.ts            # Matrix API manager, session storage, and client provider
 │   └── utils.ts             # Styling class utility
 ├── .env.example             # Documented example local settings variables
 ├── package.json             # Build scripts and package dependencies
 └── tsconfig.json            # Strict TypeScript compiler options
 ```
+
+---
+
+## ⚙️ Feature Flags Configuration
+
+The client features can be customized statically inside [config.ts](file:///e:/Github%20Pages/Messaging%20App/messaging-web-client/lib/config.ts) or dynamically using environment variables.
+
+To disable specific chat features, configure the following keys inside your `.env` or `.env.local` file:
+
+| Environment Variable | Description | Default |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_ENABLE_EMOJI_PICKER` | Controls the smileys popover icon and search deck. | `true` |
+| `NEXT_PUBLIC_ENABLE_VOICE_MESSAGES` | Controls microphone recording and waveform audio playback. | `true` |
+| `NEXT_PUBLIC_ENABLE_MEDIA_ATTACHMENTS` | Controls Plus menu upload buttons (images, videos, documents). | `true` |
+| `NEXT_PUBLIC_ENABLE_LINK_PREVIEWS` | Controls automatic URL previews and Microlink website cards. | `true` |
+| `NEXT_PUBLIC_ENABLE_CONTACT_CARD_SHARING`| Controls Contact Card sharing toggles and business card timeline cards. | `true` |
 
 ---
 

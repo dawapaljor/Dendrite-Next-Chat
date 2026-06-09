@@ -744,7 +744,7 @@ export default function Home() {
           phone: cardData.phone,
           avatarUrl: cardData.avatarUrl
         }
-      });
+      } as any);
       if (syncStateRef.current) {
         syncStateRef.current();
       }
