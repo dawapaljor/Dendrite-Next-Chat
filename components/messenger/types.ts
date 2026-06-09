@@ -1,4 +1,5 @@
 export interface Message {
+  id: string;
   sender: 'me' | 'receiver' | string;
   senderName?: string;
   senderAvatar?: string;
@@ -19,6 +20,15 @@ export interface Message {
     email?: string;
     phone?: string;
     avatarUrl?: string;
+  };
+  isEdited?: boolean;
+  isRecalled?: boolean;
+  isForwarded?: boolean;
+  forwardedFrom?: string;
+  replyTo?: {
+    id: string;
+    senderName: string;
+    text: string;
   };
 }
 

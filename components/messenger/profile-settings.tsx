@@ -82,15 +82,15 @@ export default function ProfileSettings({
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!oldPassword || !newPassword || !confirmPassword) {
-      setPasswordStatus({ type: 'error', message: lang === 'en' ? 'All fields are required.' : 'ཡིག་ཆ་ཚང་མ་སྐོང་དགོས།' });
+      setPasswordStatus({ type: 'error', message: translations[lang].fieldsRequired });
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordStatus({ type: 'error', message: lang === 'en' ? 'New passwords do not match.' : 'གསང་ཚིག་གསར་པ་གཉིས་མི་མཐུན།' });
+      setPasswordStatus({ type: 'error', message: translations[lang].passwordMismatch });
       return;
     }
     if (newPassword.length < 6) {
-      setPasswordStatus({ type: 'error', message: lang === 'en' ? 'Password must be at least 6 characters.' : 'གསང་ཚིག་ཉུང་མཐར་ཡི་གེ་༦དགོས།' });
+      setPasswordStatus({ type: 'error', message: translations[lang].passwordLengthError });
       return;
     }
 
@@ -99,7 +99,7 @@ export default function ProfileSettings({
     try {
       if (onChangePassword) {
         await onChangePassword(oldPassword, newPassword);
-        setPasswordStatus({ type: 'success', message: lang === 'en' ? 'Password changed successfully!' : 'གསང་ཚིག་ལམ་ལྷོངས་ངང་བསྒྱུར་ཚར།' });
+        setPasswordStatus({ type: 'success', message: translations[lang].passwordChangeSuccess });
         setOldPassword('');
         setNewPassword('');
         setConfirmPassword('');
@@ -113,9 +113,7 @@ export default function ProfileSettings({
       const errMsg = err?.message || err?.errcode || 'Unknown error';
       setPasswordStatus({
         type: 'error',
-        message: lang === 'en'
-          ? `Failed to change password: ${errMsg}`
-          : `གསང་ཚིག་བསྒྱུར་མ་ཐུབ།: ${errMsg}`
+        message: translations[lang].failedChangePassword + errMsg
       });
     } finally {
       setIsChangingPassword(false);
@@ -247,7 +245,7 @@ export default function ProfileSettings({
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      <span>{lang === 'en' ? 'Saving...' : 'ཉར་ཚགས་བྱེད་བཞིན་པ།...'}</span>
+                      <span>{translations[lang].saving}</span>
                     </>
                   ) : hasSavedIndicator ? (
                     <>
@@ -265,19 +263,19 @@ export default function ProfileSettings({
           {/* ── Section: Security Preferences ── */}
           <div className="space-y-3.5 pt-4 border-t border-border/10">
             <span className="text-[10px] tracking-wider uppercase font-bold text-muted-foreground px-1 block">
-              {lang === 'en' ? 'Security Preferences' : 'བདེ་འཇགས་སྒྲིག་བཀོད།'}
+              {translations[lang].securityPreferences}
             </span>
 
             <form onSubmit={handlePasswordChange} className="space-y-3">
               <h5 className="font-semibold text-xs text-foreground flex items-center gap-1.5">
                 <Lock className="w-3.5 h-3.5 text-brand" />
-                {lang === 'en' ? 'Change Password' : 'གསང་ཚིག་བསྒྱུར་བ།'}
+                {translations[lang].changePassword}
               </h5>
 
               <div className="space-y-2.5">
                 <div>
                   <label className="text-[10px] font-bold text-muted-foreground/80 mb-1.5 block uppercase tracking-widest">
-                    {lang === 'en' ? 'Current Password' : 'ད་ལྟའི་གསང་ཚིག'}
+                    {translations[lang].currentPassword}
                   </label>
                   <div className="relative">
                     <Input
@@ -300,7 +298,7 @@ export default function ProfileSettings({
 
                 <div>
                   <label className="text-[10px] font-bold text-muted-foreground/80 mb-1.5 block uppercase tracking-widest">
-                    {lang === 'en' ? 'New Password' : 'གསང་ཚིག་གསར་པ།'}
+                    {translations[lang].newPassword}
                   </label>
                   <div className="relative">
                     <Input
@@ -323,7 +321,7 @@ export default function ProfileSettings({
 
                 <div>
                   <label className="text-[10px] font-bold text-muted-foreground/80 mb-1.5 block uppercase tracking-widest">
-                    {lang === 'en' ? 'Confirm New Password' : 'གསང་ཚིག་གསར་པ་བསྐྱར་ལྡབ།'}
+                    {translations[lang].confirmNewPassword}
                   </label>
                   <div className="relative">
                     <Input
@@ -365,10 +363,10 @@ export default function ProfileSettings({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>{lang === 'en' ? 'Updating...' : 'གསར་སྒྱུར་བྱེད་བཞིན་པ།...'}</span>
+                    <span>{translations[lang].updating}</span>
                   </>
                 ) : (
-                  lang === 'en' ? 'Update Password' : 'གསང་ཚིག་གསར་སྒྱུར།'
+                  translations[lang].updatePassword
                 )}
               </button>
             </form>
@@ -437,7 +435,7 @@ export default function ProfileSettings({
                     const newLang = e.target.value as Language;
                     setLang(newLang);
                     localStorage.setItem('app_language', newLang);
-                    handleFieldChange('language', newLang === 'en' ? 'English (United States)' : 'Tibetan');
+                    handleFieldChange('language', translations[newLang].langName);
                   }}
                   className="bg-card border border-muted-foreground/20 rounded-md text-xs p-1 focus:ring-1 focus:ring-brand outline-none text-foreground shrink-0"
                 >

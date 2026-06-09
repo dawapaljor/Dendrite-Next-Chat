@@ -38,7 +38,7 @@ export default function Home() {
   const [msgText, setMsgText] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
 
-  // --- SQUAD BUILDER STATES ---
+  // --- ROOM BUILDER STATES ---
   const [groupName, setGroupName] = useState<string>('');
   const [groupSearch, setGroupSearch] = useState<string>('');
   const [selectedGroupContacts, setSelectedGroupContacts] = useState<string[]>([]);
@@ -197,7 +197,7 @@ export default function Home() {
         const timeline = room.getLiveTimeline().getEvents();
         
         const mappedMessages = timeline
-          .filter(event => event.getType() === "m.room.message")
+          .filter(event => event.getType() === "m.room.message" || event.isRedacted())
           .map(event => {
             const content = event.getContent();
             const senderId = event.getSender();
@@ -218,11 +218,41 @@ export default function Home() {
             const httpUrl = mxcUrl ? (matrixClient.mxcUrlToHttp(mxcUrl) || '') : '';
             const contactCard = content["org.workspace.contact_card"];
 
+            const isRedacted = event.isRedacted();
+            const isEdited = !!event.replacingEventId();
+            
+            // Reply context
+            const replyToId = event.replyEventId;
+            let replyToData = undefined;
+            if (replyToId) {
+              const parentEvent = room.findEventById(replyToId);
+              if (parentEvent) {
+                const parentContent = parentEvent.getContent();
+                const parentSenderId = parentEvent.getSender();
+                const parentSenderMember = parentSenderId ? room.getMember(parentSenderId) : null;
+                const parentSenderName = parentSenderMember?.name || parentSenderId || 'Unknown';
+                replyToData = {
+                  id: replyToId,
+                  senderName: parentSenderName,
+                  text: parentContent.body || ''
+                };
+              }
+            }
+
+            // Forward context
+            const forwardData = content["org.workspace.forwarded"];
+
+            let bodyText = content.body || '';
+            if (isRedacted) {
+              bodyText = isMe ? translations[lang].recalledMessageMe : translations[lang].recalledMessagePartner;
+            }
+
             return {
+              id: event.getId() || '',
               sender: isMe ? 'me' : 'receiver',
               senderName: senderName,
               senderAvatar: senderAvatar,
-              text: content.body || '',
+              text: bodyText,
               time: new Date(event.getTs()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               isImage: content.msgtype === "m.image",
               isFile: content.msgtype === "m.file" || content.msgtype === "m.video",
@@ -231,7 +261,12 @@ export default function Home() {
               fileName: content.body || 'attachment',
               fileSize: content.info?.size ? `${(content.info.size / 1024).toFixed(1)} KB` : undefined,
               isContactCard: !!contactCard,
-              contactCardData: contactCard
+              contactCardData: contactCard,
+              isEdited,
+              isRecalled: isRedacted,
+              isForwarded: !!forwardData,
+              forwardedFrom: forwardData?.sender_name,
+              replyTo: replyToData
             };
           });
 
@@ -403,6 +438,18 @@ export default function Home() {
       }
     };
 
+    const onTyping = (event: MatrixEvent, member: any) => {
+      if (!active || !activeChatIdRef.current) return;
+      if (member.roomId === activeChatIdRef.current) {
+        const room = matrixClient.getRoom(member.roomId);
+        if (room) {
+          const typingMembers = (room as any).getMembersWithPresence("typing") || [];
+          const otherTyping = typingMembers.some((m: any) => m.userId !== matrixClient.getUserId());
+          setIsTyping(otherTyping);
+        }
+      }
+    };
+
     const onAccountData = (event: MatrixEvent) => {
       if (!active) return;
       if (event.getType() === "org.workspace.profile_settings") {
@@ -416,6 +463,12 @@ export default function Home() {
           twoFactor: accountData.twoFactor !== undefined ? accountData.twoFactor : prev.twoFactor,
           readReceipts: accountData.readReceipts !== undefined ? accountData.readReceipts : prev.readReceipts,
         }));
+
+        if (accountData.language) {
+          const mappedLang: Language = (accountData.language === 'Tibetan' || accountData.language === 'bo' || accountData.language === 'བོད་སྐད།') ? 'bo' : 'en';
+          setLang(mappedLang);
+          localStorage.setItem('app_language', mappedLang);
+        }
       }
     };
 
@@ -428,6 +481,7 @@ export default function Home() {
     matrixClient.on("Room.timeline" as any, onTimeline);
     matrixClient.on("accountData" as any, onAccountData);
     matrixClient.on("User.presence" as any, onPresence);
+    matrixClient.on("RoomMember.typing" as any, onTyping);
 
     matrixClient.startClient({ initialSyncLimit: 20 }).catch(err => {
       console.error("Failed to start Matrix client:", err);
@@ -443,6 +497,7 @@ export default function Home() {
         matrixClient.removeListener("Room.timeline" as any, onTimeline);
         matrixClient.removeListener("accountData" as any, onAccountData);
         matrixClient.removeListener("User.presence" as any, onPresence);
+        matrixClient.removeListener("RoomMember.typing" as any, onTyping);
         try {
           matrixClient.stopClient();
         } catch (_) {}
@@ -498,6 +553,48 @@ export default function Home() {
       }
     };
   }, [matrixClient, activeChatId]);
+
+  // Reset isTyping and fetch current typing status of target room when active chat changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!matrixClient || !activeChatId) {
+        setIsTyping(false);
+        return;
+      }
+      const room = matrixClient.getRoom(activeChatId);
+      if (room) {
+        const typingMembers = (room as any).getMembersWithPresence("typing") || [];
+        const otherTyping = typingMembers.some((m: any) => m.userId !== matrixClient.getUserId());
+        setIsTyping(otherTyping);
+      } else {
+        setIsTyping(false);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [activeChatId, matrixClient]);
+
+  // Send typing notifications to the Matrix server
+  useEffect(() => {
+    if (!matrixClient || !activeChatId) return;
+
+    if (!msgText.trim()) {
+      matrixClient.sendTyping(activeChatId, false, undefined as any).catch(() => {});
+      return;
+    }
+
+    matrixClient.sendTyping(activeChatId, true, 4000).catch(() => {});
+
+    const timeout = setTimeout(() => {
+      if (matrixClient && activeChatIdRef.current) {
+        matrixClient.sendTyping(activeChatIdRef.current, false, undefined as any).catch(() => {});
+      }
+    }, 4000);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [msgText, activeChatId, matrixClient]);
+
 
   // Discover Matrix server directory users when search query changes or on startup
   useEffect(() => {
@@ -658,17 +755,100 @@ export default function Home() {
   };
 
   // Send message action
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (replyToId?: string) => {
     if (!msgText.trim() || !activeChatId || !matrixClient) return;
+
+    const textToSend = msgText.trim();
+    // Clear input immediately for instant feedback (optimistic UI)
+    setMsgText('');
+
+    try {
+      const content: any = {
+        msgtype: "m.text" as any,
+        body: textToSend
+      };
+
+      if (replyToId) {
+        content["m.relates_to"] = {
+          "m.in_reply_to": {
+            "event_id": replyToId
+          }
+        };
+
+        const room = matrixClient.getRoom(activeChatId);
+        const parentEvent = room?.findEventById(replyToId);
+        if (parentEvent) {
+          const parentBody = parentEvent.getContent().body || "";
+          const parentSender = parentEvent.getSender() || "";
+          content.format = "org.matrix.custom.html";
+          content.formatted_body = `<mx-reply><blockquote><a href="https://matrix.to/#/${activeChatId}/${replyToId}">In reply to</a> <a href="https://matrix.to/#/${parentSender}">${parentSender}</a><br>${parentBody}</blockquote></mx-reply>${textToSend}`;
+        }
+      }
+
+      await matrixClient.sendMessage(activeChatId, content);
+    } catch (err) {
+      console.error("Failed to send message via Matrix:", err);
+      // Restore the text so the user can retry
+      setMsgText(textToSend);
+    }
+  };
+
+  // Edit message action
+  const handleEditMessage = async (eventId: string, newText: string) => {
+    if (!activeChatId || !matrixClient || !newText.trim()) return;
 
     try {
       await matrixClient.sendMessage(activeChatId, {
-        msgtype: "m.text" as any,
-        body: msgText
-      });
-      setMsgText('');
+        "m.relates_to": {
+          "rel_type": "m.replace" as any,
+          "event_id": eventId
+        } as any,
+        "m.new_content": {
+          "msgtype": "m.text" as any,
+          "body": newText
+        },
+        "msgtype": "m.text" as any,
+        "body": `* ${newText}`
+      } as any);
+      if (syncStateRef.current) {
+        syncStateRef.current();
+      }
     } catch (err) {
-      console.error("Failed to send message via Matrix:", err);
+      console.error("Failed to edit Matrix message:", err);
+    }
+  };
+
+  // Recall (redact) message action
+  const handleRecallMessage = async (eventId: string) => {
+    if (!activeChatId || !matrixClient) return;
+
+    try {
+      await matrixClient.redactEvent(activeChatId, eventId);
+      if (syncStateRef.current) {
+        syncStateRef.current();
+      }
+    } catch (err) {
+      console.error("Failed to recall Matrix message:", err);
+    }
+  };
+
+  // Forward message action
+  const handleForwardMessage = async (targetRoomId: string, messageText: string, originalSender: string) => {
+    if (!matrixClient || !targetRoomId || !messageText.trim()) return;
+
+    try {
+      await matrixClient.sendMessage(targetRoomId, {
+        msgtype: "m.text" as any,
+        body: messageText,
+        "org.workspace.forwarded": {
+          "sender_name": originalSender
+        }
+      } as any);
+      if (syncStateRef.current) {
+        syncStateRef.current();
+      }
+    } catch (err) {
+      console.error("Failed to forward Matrix message:", err);
     }
   };
 
@@ -790,7 +970,7 @@ export default function Home() {
   const handleConfirmGroupCreation = async () => {
     if (selectedGroupContacts.length === 0 || !matrixClient) return;
 
-    const trimmedGroupName = groupName.trim() || "Squad Alignment Channel";
+    const trimmedGroupName = groupName.trim() || "New Room";
     const invitees = selectedGroupContacts.map(cid => 
       cid.startsWith('@') ? cid : `@${cid}:im.tibcert.org`
     );
@@ -981,6 +1161,9 @@ export default function Home() {
         onInviteUser={handleInviteUserToRoom}
         onRemoveUser={handleRemoveUserFromRoom}
         onLeaveRoom={handleLeaveRoom}
+        onEditMessage={handleEditMessage}
+        onRecallMessage={handleRecallMessage}
+        onForwardMessage={handleForwardMessage}
       />
     </div>
   );

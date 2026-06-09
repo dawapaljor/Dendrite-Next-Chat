@@ -118,7 +118,7 @@ export default function DiscoverContacts({
             placeholder={
               activeTab === 'one-to-one'
                 ? t.searchColleagues
-                : (lang === 'en' ? 'Search group rooms...' : 'ཚགས་པའི་གླེང་མོལ་ཁང་འཚོལ་བ།...')
+                : t.searchGroupRooms
             }
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -256,7 +256,7 @@ export default function DiscoverContacts({
             <div className="pb-6">
               <div className="space-y-2 pt-4">
                 <span className="px-4 py-4 text-[10px] tracking-wider uppercase font-bold text-muted-foreground block">
-                  {lang === 'en' ? 'Group Rooms' : 'ཚགས་པའི་གླེང་མོལ་ཁང་།'} ({filteredRooms.length})
+                  {t.groupRooms} ({filteredRooms.length})
                 </span>
 
                 <div className="space-y-1.5">
@@ -281,7 +281,7 @@ export default function DiscoverContacts({
                             <p className="text-[10px] text-muted-foreground line-clamp-1 max-w-[200px] md:max-w-[300px]">{room.topic}</p>
                           ) : (
                             <p className="text-[10px] text-muted-foreground/60 italic">
-                              {lang === 'en' ? 'No topic set' : 'བརྗོད་གཞི་མི་འདུག'}
+                              {t.noTopicSet}
                             </p>
                           )}
                         </div>
@@ -290,7 +290,7 @@ export default function DiscoverContacts({
                       <div className="flex items-center gap-2">
                         {room.members && room.members.length > 0 && (
                           <span className="text-[9px] font-bold text-muted-foreground bg-muted px-2 py-1 rounded-md shrink-0">
-                            {room.members.length} {lang === 'en' ? 'members' : 'ཚོགས་མི།'}
+                            {t.membersCount.replace('{count}', String(room.members.length))}
                           </span>
                         )}
                         <button
@@ -306,7 +306,7 @@ export default function DiscoverContacts({
 
                   {filteredRooms.length === 0 && (
                     <div className="py-8 text-center text-xs text-muted-foreground">
-                      {lang === 'en' ? 'No group rooms found.' : 'ཚགས་པའི་གླེང་མོལ་ཁང་མ་རྙེད།'}
+                      {t.noGroupRoomsFound}
                     </div>
                   )}
                 </div>

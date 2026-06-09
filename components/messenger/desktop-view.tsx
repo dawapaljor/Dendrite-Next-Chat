@@ -67,6 +67,9 @@ interface DesktopViewProps {
   onLeaveRoom?: (roomId: string) => Promise<void>;
   onSendMediaMessage?: (file: File, isVoice?: boolean) => Promise<void>;
   onShareContactCard?: (cardData: any) => Promise<void> | void;
+  onEditMessage?: (eventId: string, newText: string) => Promise<void>;
+  onRecallMessage?: (eventId: string) => Promise<void>;
+  onForwardMessage?: (targetRoomId: string, messageText: string, originalSender: string) => Promise<void>;
 }
 
 export default function DesktopView({
@@ -110,7 +113,10 @@ export default function DesktopView({
   onRemoveUser,
   onLeaveRoom,
   onSendMediaMessage,
-  onShareContactCard
+  onShareContactCard,
+  onEditMessage,
+  onRecallMessage,
+  onForwardMessage
 }: DesktopViewProps) {
   // Mode inside desktop screen to decide if we are showing Group creator
   const [isCreatingGroup, setIsCreatingGroup] = useState<boolean>(false);
@@ -338,6 +344,10 @@ export default function DesktopView({
               currentUserId={currentUserId}
               profileSettings={profileSettings}
               onShareContactCard={onShareContactCard}
+              chats={chats}
+              onEditMessage={onEditMessage}
+              onRecallMessage={onRecallMessage}
+              onForwardMessage={onForwardMessage}
             />
           ) : (
             /* Blank overview guidelines screen when nothing active */

@@ -1,12 +1,16 @@
-import { en } from './translations/en';
-import { bo } from './translations/bo';
+import { en as baseEn } from './translations/en';
 
-export const translations = {
-  en,
-  bo
-};
+// Dynamically scan the translations directory for translation files at compile-time
+const context = (require as any).context('./translations', false, /\.(ts|js|json)$/);
 
-export type Language = keyof typeof translations;
-export type TranslationKeys = typeof en;
-export type TranslationValues = typeof en | typeof bo;
+export const translations: Record<string, typeof baseEn> = {};
+
+context.keys().forEach((key: string) => {
+  const lang = key.replace(/^\.\/(.*)\.\w+$/, '$1');
+  const langModule = context(key);
+  translations[lang] = langModule[lang] || langModule.default || langModule;
+});
+
+export type Language = string;
+export type TranslationKeys = typeof baseEn;
 export type TranslationKey = keyof TranslationKeys;

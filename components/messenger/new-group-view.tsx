@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Users, Check, ArrowLeft } from 'lucide-react';
+import { Search, Hash, Check, ArrowLeft } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -49,7 +49,7 @@ export default function NewGroupView({
         </button>
         <div className="flex items-center gap-1.5 min-w-0">
           <div className="p-1 bg-brand-light text-brand rounded">
-            <Users className="h-4 w-4" />
+            <Hash className="h-4 w-4" />
           </div>
           <h3 className="font-bold text-sm truncate">{translations[lang].createSquadChannel}</h3>
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   MoreVertical,
   ArrowLeft,
@@ -16,7 +16,6 @@ import {
   UserMinus,
   Image,
   Edit,
-  // New icons
   Mic,
   Volume2,
   Play,
@@ -28,12 +27,21 @@ import {
   Check,
   Mail,
   Phone,
-  MessageSquare
+  MessageSquare,
+  CornerUpLeft,
+  CornerUpRight,
+  Undo2,
+  Edit2,
+  AtSign,
+  Forward,
+  Reply,
+  ChevronDown
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { ChatThread, ProfileSettings } from "./types";
-import { translations, Language } from "@/lib/translations";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { ChatThread, Message, ProfileSettings, Contact } from "./types";
+import { translations, Language, TranslationKey } from "@/lib/translations";
 import { FEATURE_FLAGS } from "@/lib/config";
 
 const EMOJI_CATEGORIES = [
@@ -191,7 +199,7 @@ export function CustomAudioPlayer({ src, lang }: CustomAudioPlayerProps) {
           <span>{formatTime(currentTime)} / {duration > 0 ? formatTime(duration) : '0:10'}</span>
           <span className="font-semibold uppercase tracking-wider text-[8px] flex items-center gap-1">
             <Volume2 className="w-2.5 h-2.5" />
-            {lang === 'bo' ? 'སྐད་འཕྲིན།' : 'VOICE'}
+            {translations[lang].voiceLabel}
           </span>
         </div>
       </div>
@@ -249,8 +257,35 @@ const isImageOrGifUrl = (urlStr: string): boolean => {
   }
 };
 
-const renderClickableText = (text: string, isMe: boolean, containsTibetan: boolean) => {
+const renderClickableText = (text: string, isMe: boolean, containsTibetan: boolean, members: Contact[] = []) => {
   const parts = text.split(URL_REGEX);
+  
+  const parseMentions = (subtext: string) => {
+    const MENTION_REGEX = /(@[^\s@]+)/g;
+    const subparts = subtext.split(MENTION_REGEX);
+    return subparts.map((subpart, idx) => {
+      if (subpart.match(MENTION_REGEX)) {
+        const nameWithoutAt = subpart.substring(1);
+        const isMember = members.some(m => m.name === nameWithoutAt || m.id === subpart);
+        if (isMember) {
+          return (
+            <span
+              key={idx}
+              className={`font-semibold rounded px-1 py-0.5 select-all ${
+                isMe
+                  ? 'bg-white/20 text-white border border-white/10'
+                  : 'bg-brand/10 text-brand border border-brand/5'
+              }`}
+            >
+              {subpart}
+            </span>
+          );
+        }
+      }
+      return subpart;
+    });
+  };
+
   return (
     <p className={`whitespace-pre-line leading-relaxed ${containsTibetan ? 'font-tibetan' : ''}`}>
       {parts.map((part, i) => {
@@ -270,7 +305,7 @@ const renderClickableText = (text: string, isMe: boolean, containsTibetan: boole
             </a>
           );
         }
-        return part;
+        return <React.Fragment key={i}>{parseMentions(part)}</React.Fragment>;
       })}
     </p>
   );
@@ -322,11 +357,15 @@ export function LinkPreviewCard({ url }: LinkPreviewCardProps) {
 
   if (loading) {
     return (
-      <div className="mt-2 p-2 bg-muted/20 border border-muted/20 rounded-xl flex items-center gap-2 w-64 md:w-72 select-none animate-pulse">
-        <div className="w-8 h-8 rounded bg-muted/40 shrink-0" />
-        <div className="flex-1 space-y-1.5 min-w-0">
-          <div className="h-3 bg-muted/40 rounded w-3/4" />
-          <div className="h-2.5 bg-muted/40 rounded w-1/2" />
+      <div className="mt-2 bg-muted/20 border border-muted/20 rounded-xl overflow-hidden w-full max-w-[340px] md:max-w-[400px] select-none animate-pulse">
+        <div className="w-full h-[180px] bg-muted/40" />
+        <div className="p-3 space-y-2">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-4 rounded-full bg-muted/40 shrink-0" />
+            <div className="h-2.5 bg-muted/40 rounded w-20" />
+          </div>
+          <div className="h-3.5 bg-muted/40 rounded w-4/5" />
+          <div className="h-2.5 bg-muted/40 rounded w-3/5" />
         </div>
       </div>
     );
@@ -341,35 +380,40 @@ export function LinkPreviewCard({ url }: LinkPreviewCardProps) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="mt-2.5 flex flex-col md:flex-row bg-muted/30 hover:bg-muted/50 border border-muted/20 rounded-xl overflow-hidden max-w-[320px] md:max-w-[380px] transition duration-200 text-left cursor-pointer select-none group"
+      className="mt-2.5 flex flex-col bg-muted/30 hover:bg-muted/50 border border-muted/20 rounded-xl overflow-hidden w-full max-w-[340px] md:max-w-[400px] transition duration-200 text-left cursor-pointer select-none group"
       onClick={(e) => e.stopPropagation()}
     >
+      {/* Full-width hero image */}
       {metadata.image && (
-        <div className="w-full md:w-28 h-20 md:h-full relative shrink-0 overflow-hidden bg-muted/20 border-b md:border-b-0 md:border-r border-muted/20">
+        <div className="w-full h-[180px] relative shrink-0 overflow-hidden bg-muted/20">
           <img
             src={metadata.image}
             alt="Link Preview"
-            className="w-full h-full object-cover group-hover:scale-102 transition duration-300"
+            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
           />
         </div>
       )}
 
-      <div className="p-2.5 flex-1 min-w-0 flex flex-col justify-center gap-1 leading-tight">
-        <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+      {/* Metadata section */}
+      <div className="px-3 py-2.5 flex-1 min-w-0 flex flex-col justify-center gap-1 leading-tight">
+        {/* Publisher row with logo */}
+        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
           {metadata.logo && (
-            <img src={metadata.logo} alt="logo" className="w-3 h-3 object-contain rounded-xs" />
+            <img src={metadata.logo} alt="logo" className="w-4 h-4 object-contain rounded-full" />
           )}
           <span className="truncate">{metadata.publisher || new URL(url).hostname}</span>
         </div>
 
+        {/* Title */}
         {metadata.title && (
-          <h5 className="text-[11px] font-bold text-foreground truncate group-hover:text-brand transition">
+          <h5 className="text-[12.5px] font-bold text-foreground line-clamp-2 leading-snug group-hover:text-brand transition">
             {metadata.title}
           </h5>
         )}
 
+        {/* Description */}
         {metadata.description && (
-          <p className="text-[10px] text-muted-foreground line-clamp-2 leading-snug">
+          <p className="text-[10.5px] text-muted-foreground line-clamp-2 leading-snug">
             {metadata.description}
           </p>
         )}
@@ -382,7 +426,7 @@ interface ChatViewProps {
   activeChat: ChatThread;
   msgText: string;
   onMsgTextChange: (val: string) => void;
-  onSendMessage: () => void;
+  onSendMessage: (replyToId?: string) => void;
   isTyping: boolean;
   onBackClick?: () => void; // only needed on mobile layout
   lang: Language;
@@ -395,6 +439,10 @@ interface ChatViewProps {
   currentUserId?: string;
   profileSettings?: ProfileSettings;
   onShareContactCard?: (cardData: any) => Promise<void> | void;
+  chats?: ChatThread[];
+  onEditMessage?: (eventId: string, newText: string) => Promise<void>;
+  onRecallMessage?: (eventId: string) => Promise<void>;
+  onForwardMessage?: (targetRoomId: string, messageText: string, originalSender: string) => Promise<void>;
 }
 
 export default function ChatView({
@@ -413,7 +461,11 @@ export default function ChatView({
   onConnectChat,
   currentUserId,
   profileSettings,
-  onShareContactCard
+  onShareContactCard,
+  chats,
+  onEditMessage,
+  onRecallMessage,
+  onForwardMessage
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showRoomDetails, setShowRoomDetails] = useState<boolean>(false);
@@ -432,6 +484,47 @@ export default function ChatView({
   const [shareRole, setShareRole] = useState(true);
   const [shareEmail, setShareEmail] = useState(false);
   const [sharePhone, setSharePhone] = useState(false);
+
+  // --- ADVANCED FEATURE STATES ---
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<{ eventId: string; text: string } | null>(null);
+  const [forwardingMessage, setForwardingMessage] = useState<Message | null>(null);
+  const [forwardSearchQuery, setForwardSearchQuery] = useState('');
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+
+  // Mention autocomplete
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionResults, setMentionResults] = useState<Contact[]>([]);
+  const [mentionStartIdx, setMentionStartIdx] = useState<number>(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Link preview compose state
+  const [composeUrl, setComposeUrl] = useState<string | null>(null);
+  const [dismissedUrl, setDismissedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!FEATURE_FLAGS.enableLinkPreviews) {
+      setComposeUrl(null);
+      return;
+    }
+    const urls = detectUrls(msgText);
+    const firstUrl = urls[0] || null;
+
+    if (!firstUrl) {
+      setComposeUrl(null);
+      setDismissedUrl(null);
+    } else if (firstUrl !== dismissedUrl) {
+      setComposeUrl(firstUrl);
+    } else {
+      setComposeUrl(null);
+    }
+  }, [msgText, dismissedUrl]);
+
+  useEffect(() => {
+    setComposeUrl(null);
+    setDismissedUrl(null);
+  }, [activeChat.id]);
 
   const handleShareCard = async () => {
     if (!onShareContactCard || !profileSettings) return;
@@ -503,7 +596,7 @@ export default function ChatView({
       setIsEditingDetails(false);
       setEditAvatarFile(null);
     } catch (err) {
-      alert(lang === 'en' ? "Failed to save room details." : "གླེང་མོལ་ཁང་གི་གནས་ཚུལ་ཉར་ཚགས་མ་ཐུབ།");
+      alert(translations[lang].failedSaveRoomDetails);
     } finally {
       setIsSavingDetails(false);
     }
@@ -517,7 +610,7 @@ export default function ChatView({
       await onInviteUser(activeChat.id, inviteId.trim());
       setInviteId('');
     } catch (err: any) {
-      alert(lang === 'en' ? `Failed to invite user: ${err?.message || 'Unknown'}` : `གདན་འདྲེན་ཞུ་མ་ཐུབ།: ${err?.message || 'བྱུང་མིན།'}`);
+      alert(translations[lang].failedInviteUser + (err?.message || 'Unknown'));
     } finally {
       setIsInviting(false);
     }
@@ -525,11 +618,11 @@ export default function ChatView({
 
   const handleRemoveUserAction = async (memberId: string) => {
     if (!onRemoveUser) return;
-    if (confirm(lang === 'en' ? `Are you sure you want to remove this member?` : `ཚོགས་མི་འདི་ཕྱིར་འབུད་བྱེད་དམ།`)) {
+    if (confirm(translations[lang].confirmRemoveMember)) {
       try {
         await onRemoveUser(activeChat.id, memberId);
       } catch (err: any) {
-        alert(lang === 'en' ? `Failed to remove user: ${err?.message || 'Unknown'}` : `ཚོགས་མི་ཕྱིར་འབུད་མ་ཐུབ།: ${err?.message || 'བྱུང་མིན།'}`);
+        alert(translations[lang].failedRemoveUser + (err?.message || 'Unknown'));
       }
     }
   };
@@ -537,15 +630,15 @@ export default function ChatView({
   const handleLeaveRoomAction = async () => {
     if (!onLeaveRoom) return;
     const confirmMsg = activeChat.isAdmin
-      ? (lang === 'en' ? 'Are you sure you want to destroy (leave) this room? If you are the last member, it will be removed.' : 'གླེང་མོལ་ཁང་འདི་མེད་པར་བཟོ་འམ། གལ་ཏེ་ཁྱེད་རང་མཐའ་མའི་ཚོགས་མི་ཡིན་ན་གླེང་མོལ་ཁང་འདི་མེད་པར་ཆགས་རྒྱུ་རེད།')
-      : (lang === 'en' ? 'Are you sure you want to leave this room?' : 'གླེང་མོལ་ཁང་འདི་ནས་ཐོན་པར་གཏན་འཁེལ་ལམ།');
+      ? translations[lang].confirmDestroyRoom
+      : translations[lang].confirmLeaveRoom;
 
     if (confirm(confirmMsg)) {
       try {
         await onLeaveRoom(activeChat.id);
         setShowRoomDetails(false);
       } catch (err: any) {
-        alert(lang === 'en' ? `Failed to leave room: ${err?.message || 'Unknown'}` : `གླེང་མོལ་ཁང་ནས་ཐོན་མ་ཐུབ།: ${err?.message || 'བྱུང་མིན།'}`);
+        alert(translations[lang].failedLeaveRoom + (err?.message || 'Unknown'));
       }
     }
   };
@@ -555,10 +648,130 @@ export default function ChatView({
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeChat.messages, isTyping]);
 
+  // Reset reply/edit state when active chat changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setReplyTo(null);
+      setEditingMessage(null);
+      setForwardingMessage(null);
+      setMentionQuery(null);
+      setMentionResults([]);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [activeChat.id]);
+
+  // Mention autocomplete: watch msgText for @ trigger
+  useEffect(() => {
+    const cursor = inputRef.current?.selectionStart ?? msgText.length;
+    const textBeforeCursor = msgText.slice(0, cursor);
+    const atMatch = textBeforeCursor.match(/@([\w\u0F00-\u0FFF]*)$/);
+    if (atMatch) {
+      const query = atMatch[1].toLowerCase();
+      setMentionQuery(query);
+      setMentionStartIdx(textBeforeCursor.lastIndexOf('@'));
+      const members = activeChat.members || [];
+      const results = members.filter(m =>
+        m.name.toLowerCase().includes(query) ||
+        m.id.toLowerCase().includes(query)
+      ).slice(0, 6);
+      setMentionResults(results);
+    } else {
+      setMentionQuery(null);
+      setMentionResults([]);
+    }
+  }, [msgText, activeChat.members]);
+
+  const insertMention = (member: Contact) => {
+    const before = msgText.slice(0, mentionStartIdx);
+    const after = msgText.slice(inputRef.current?.selectionStart ?? msgText.length);
+    const newText = `${before}@${member.name} ${after}`;
+    onMsgTextChange(newText);
+    setMentionQuery(null);
+    setMentionResults([]);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      onSendMessage();
+    if (mentionResults.length > 0 && (e.key === 'Escape')) {
+      setMentionQuery(null);
+      setMentionResults([]);
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendOrEdit();
+    }
+  };
+
+  const handleSendOrEdit = async () => {
+    if (editingMessage) {
+      if (!msgText.trim() || !onEditMessage) return;
+      setIsSubmittingAction(true);
+      try {
+        await onEditMessage(editingMessage.eventId, msgText.trim());
+        setEditingMessage(null);
+        onMsgTextChange('');
+      } catch (err) {
+        console.error('Failed to edit message:', err);
+      } finally {
+        setIsSubmittingAction(false);
+      }
+    } else {
+      onSendMessage(replyTo?.id);
+      setReplyTo(null);
+    }
+  };
+
+  const handleReply = (msg: Message) => {
+    setReplyTo(msg);
+    setEditingMessage(null);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const handleStartEdit = (msg: Message) => {
+    if (!msg.id) return;
+    setEditingMessage({ eventId: msg.id, text: msg.text });
+    setReplyTo(null);
+    onMsgTextChange(msg.text);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const handleRecall = async (msg: Message) => {
+    if (!msg.id || !onRecallMessage) return;
+    if (!confirm(translations[lang].confirmRemoveMember?.replace('remove this member', 'recall this message') || 'Recall this message?')) return;
+    setIsSubmittingAction(true);
+    try {
+      await onRecallMessage(msg.id);
+    } catch (err) {
+      console.error('Failed to recall message:', err);
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
+
+  const handleForward = (msg: Message) => {
+    setForwardingMessage(msg);
+    setForwardSearchQuery('');
+  };
+
+  const handleConfirmForward = async (targetChat: ChatThread) => {
+    if (!forwardingMessage || !onForwardMessage) return;
+    setIsSubmittingAction(true);
+    try {
+      await onForwardMessage(targetChat.id, forwardingMessage.text, forwardingMessage.senderName || '');
+      setForwardingMessage(null);
+    } catch (err) {
+      console.error('Failed to forward message:', err);
+    } finally {
+      setIsSubmittingAction(false);
+    }
+  };
+
+  const cancelReplyOrEdit = () => {
+    setReplyTo(null);
+    if (editingMessage) {
+      setEditingMessage(null);
+      onMsgTextChange('');
     }
   };
 
@@ -618,7 +831,7 @@ export default function ChatView({
     if (!file || !onSendMediaMessage) return;
 
     if (file.size > maxBytes) {
-      alert(lang === 'en' ? "File is too large. Max size is 20MB." : "ཡིག་ཆ་ཆེ་དྲགས་འདུག ཆེ་ཤོས་ལ་ 20MB ལས་མི་ཆོག");
+      alert(translations[lang].fileTooLarge);
       return;
     }
     
@@ -638,7 +851,7 @@ export default function ChatView({
     if (!file || !onSendMediaMessage) return;
 
     if (file.size > maxBytes) {
-      alert(lang === 'en' ? "File is too large. Max size is 20MB." : "ཡིག་ཆ་ཆེ་དྲགས་འདུག ཆེ་ཤོས་ལ་ 20MB ལས་མི་ཆོག");
+      alert(translations[lang].fileTooLarge);
       return;
     }
 
@@ -664,7 +877,7 @@ export default function ChatView({
   const startRecording = async () => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert(lang === 'en' ? "Microphone recording is not supported in this browser." : "སྐད་འཇུག་རྒྱུད་ཁོངས་འདིར་བཀོལ་སྤྱོད་མི་ཐུབ།");
+        alert(translations[lang].micNotSupported);
         return;
       }
       
@@ -720,7 +933,7 @@ export default function ChatView({
 
     } catch (err: any) {
       console.error("Failed to start voice recording:", err);
-      alert(lang === 'en' ? "Failed to access microphone. Please check permissions." : "སྐད་ལེན་དབང་ཆ་ལེན་མ་ཐུབ། སྒྲིག་བཀོད་ལ་གཟིགས།");
+      alert(translations[lang].micAccessFailed);
     }
   };
 
@@ -746,6 +959,56 @@ export default function ChatView({
       recordingTimerRef.current = null;
     }
     setRecordingDuration(0);
+  };
+
+  const renderMessageDropdown = (msg: Message, isMe: boolean) => {
+    return (
+      <div className="absolute top-1.5 right-1.5 opacity-0 group-hover/bubble:opacity-100 transition-opacity duration-150 z-20">
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <button className="p-0.5 rounded-full bg-black/25 hover:bg-black/45 text-white transition-colors duration-150 border-none cursor-pointer flex items-center justify-center shadow-xs">
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align={isMe ? "end" : "start"} className="min-w-[100px] text-[11px] py-1 bg-card border border-muted/50 rounded-lg shadow-md z-50">
+            <DropdownMenuItem
+              onClick={() => handleReply(msg)}
+              className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-muted text-foreground cursor-pointer"
+            >
+              <Reply className="w-3 h-3 text-muted-foreground" />
+              <span>{translations[lang].reply}</span>
+            </DropdownMenuItem>
+            {onForwardMessage && (
+              <DropdownMenuItem
+                onClick={() => handleForward(msg)}
+                className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-muted text-foreground cursor-pointer"
+              >
+                <Forward className="w-3 h-3 text-muted-foreground" />
+                <span>{translations[lang].forward}</span>
+              </DropdownMenuItem>
+            )}
+            {isMe && onEditMessage && !msg.isImage && !msg.isFile && !msg.isAudio && (
+              <DropdownMenuItem
+                onClick={() => handleStartEdit(msg)}
+                className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-muted text-foreground cursor-pointer"
+              >
+                <Edit2 className="w-3 h-3 text-muted-foreground" />
+                <span>{translations[lang].edit}</span>
+              </DropdownMenuItem>
+            )}
+            {isMe && onRecallMessage && (
+              <DropdownMenuItem
+                onClick={() => handleRecall(msg)}
+                className="flex items-center gap-2 px-2.5 py-1.5 hover:bg-muted text-rose-500 focus:text-rose-500 cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>{translations[lang].recall}</span>
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
   };
 
   return (
@@ -799,10 +1062,19 @@ export default function ChatView({
                 ) : null}
                 <span className="truncate">{activeChat.name}</span>
               </h4>
-              <span className="text-[10px] text-muted-foreground block">
-                {activeChat.isGroup
-                  ? (lang === 'en' ? `${activeChat.members?.length || 0} members` : `ཚོགས་མི་ ${activeChat.members?.length || 0}`)
-                  : (isTyping ? (lang === 'en' ? 'typing...' : 'འབྲི་བཞིན་པ།...') : activeChat.online === true ? (lang === 'en' ? 'Online' : 'དྲ་ཐོག་ཏུ་ཡོད་པ།') : (lang === 'en' ? 'Offline' : 'དྲ་མེད།'))}
+              <span className={`text-[10px] block transition-all duration-300 ${isTyping ? 'text-brand font-medium' : 'text-muted-foreground'}`}>
+                {isTyping
+                  ? <span className="flex items-center gap-1">
+                      <span className="inline-flex gap-0.5">
+                        <span className="w-1 h-1 rounded-full bg-brand animate-bounce [animation-delay:-0.3s] inline-block" />
+                        <span className="w-1 h-1 rounded-full bg-brand animate-bounce [animation-delay:-0.15s] inline-block" />
+                        <span className="w-1 h-1 rounded-full bg-brand animate-bounce inline-block" />
+                      </span>
+                      {translations[lang].typing}
+                    </span>
+                  : activeChat.isGroup
+                  ? translations[lang].membersCount.replace('{count}', String(activeChat.members?.length || 0))
+                  : (activeChat.online === true ? translations[lang].online : translations[lang].offline)}
               </span>
             </div>
           </div>
@@ -811,11 +1083,11 @@ export default function ChatView({
             <button
               onClick={() => setShowRoomDetails(!showRoomDetails)}
               className={`p-1.5 hover:bg-muted rounded-full transition ${showRoomDetails ? 'text-brand bg-brand-light text-brand-light-foreground' : 'text-muted-foreground'}`}
-              title={lang === 'en' ? "Room details & members" : "གླེང་མོལ་ཁང་གི་གནས་ཚུལ།"}
+              title={translations[lang].roomDetailsTooltip}
             >
               <Users className="h-4 w-4" />
             </button>
-            <button className="p-1.5 hover:bg-muted rounded-full text-muted-foreground" title={lang === 'en' ? "More options" : "སྒྲིག་བཀོད་གཞན།"}>
+            <button className="p-1.5 hover:bg-muted rounded-full text-muted-foreground" title={translations[lang].moreOptionsTooltip}>
               <MoreVertical className="h-4 w-4" />
             </button>
           </div>
@@ -832,14 +1104,36 @@ export default function ChatView({
 
             {activeChat.messages.map((m, idx) => {
               const isMe = m.sender === 'me';
+              const msgKey = m.id || String(idx);
 
               // Get initials for fallback
               const initials = m.senderName
                 ? m.senderName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
                 : 'U';
 
+              // Recalled message display
+              if (m.isRecalled) {
+                return (
+                  <div key={msgKey} className={`flex items-end gap-2.5 w-full ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                    <Avatar className="h-8 w-8 border border-muted-foreground/10 shrink-0 rounded-full opacity-40">
+                      {m.senderAvatar ? <AvatarImage src={m.senderAvatar} alt={m.senderName || 'User'} className="object-cover rounded-full" /> : null}
+                      <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-bold rounded-full">{initials}</AvatarFallback>
+                    </Avatar>
+                    <div className={`flex flex-col max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
+                      <div className="px-3 py-1.5 rounded-xl text-[10px] italic text-muted-foreground/60 border border-dashed border-muted/40 bg-muted/10 select-none flex items-center gap-1.5">
+                        <Undo2 className="w-3 h-3 shrink-0" />
+                        <span>{isMe ? translations[lang].recalledMessageMe : translations[lang].recalledMessagePartner}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
-                <div key={idx} className={`flex items-end gap-2.5 w-full ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div
+                  key={msgKey}
+                  className={`flex items-end gap-2.5 w-full ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
+                >
                   {/* Sender Avatar */}
                   <Avatar className="h-8 w-8 border border-muted-foreground/10 shrink-0 rounded-full">
                     {m.senderAvatar ? (
@@ -855,7 +1149,7 @@ export default function ChatView({
                     {/* Chat Bubble */}
                     {m.isImage ? (
                       m.fileUrl ? (
-                        <div className="w-full max-w-[280px] rounded-2xl overflow-hidden shadow-md border border-muted bg-[#0f172a]/20 cursor-pointer hover:border-brand/40 transition duration-300">
+                        <div className="w-full max-w-[280px] rounded-2xl overflow-hidden shadow-md border border-muted bg-[#0f172a]/20 cursor-pointer hover:border-brand/40 transition duration-300 relative group/bubble">
                           <img
                             src={m.fileUrl}
                             alt={m.fileName || "Image"}
@@ -869,9 +1163,10 @@ export default function ChatView({
                               {isMe && <CheckCheck className="h-3.5 w-3.5 text-brand" />}
                             </div>
                           </div>
+                          {renderMessageDropdown(m, isMe)}
                         </div>
                       ) : (
-                        <div className="w-full max-w-[280px] rounded-2xl overflow-hidden shadow-md border hover:border-brand/40 transition duration-300 border-muted">
+                        <div className="w-full max-w-[280px] rounded-2xl overflow-hidden shadow-md border hover:border-brand/40 transition duration-300 border-muted relative group/bubble">
                           <div className="bg-[#0f172a] p-3 text-white">
                             {m.senderName && !isMe && (
                               <span className={`text-[11px] font-bold mb-2 block select-none ${getSenderNameColor(m.senderName)}`}>
@@ -920,10 +1215,11 @@ export default function ChatView({
                               {isMe && <CheckCheck className="h-3.5 w-3.5 text-brand" />}
                             </div>
                           </div>
+                          {renderMessageDropdown(m, isMe)}
                         </div>
                       )
                     ) : m.isFile ? (
-                      <div className="flex items-center gap-3 p-3 bg-muted/40 hover:bg-muted/60 border border-muted/20 rounded-xl w-64 md:w-72 transition duration-200">
+                      <div className="flex items-center gap-3 p-3 bg-muted/40 hover:bg-muted/60 border border-muted/20 rounded-xl w-64 md:w-72 transition duration-200 relative group/bubble">
                         <div className="w-9 h-9 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
                           <FileText className="w-5 h-5" />
                         </div>
@@ -948,9 +1244,10 @@ export default function ChatView({
                             <Download className="w-4 h-4" />
                           </a>
                         )}
+                        {renderMessageDropdown(m, isMe)}
                       </div>
                     ) : m.isContactCard && FEATURE_FLAGS.enableContactCardSharing ? (
-                      <div className="w-64 md:w-72 bg-card border border-muted/30 rounded-2xl overflow-hidden shadow-md flex flex-col hover:border-brand/40 transition duration-300">
+                      <div className="w-64 md:w-72 bg-card border border-muted/30 rounded-2xl overflow-hidden shadow-md flex flex-col hover:border-brand/40 transition duration-300 relative group/bubble">
                         {/* Card Header with gradient background */}
                         <div className="bg-linear-to-r from-brand/15 to-purple-500/5 p-3 flex items-center gap-3 border-b border-muted/15">
                           <Avatar className="h-10 w-10 border border-brand/20 rounded-full shrink-0">
@@ -963,7 +1260,7 @@ export default function ChatView({
                           </Avatar>
                           <div className="min-w-0">
                             <span className="text-xs font-bold block text-foreground truncate">
-                              {m.contactCardData?.username || (lang === 'en' ? 'User' : 'སྤྱོད་མིང་།')}
+                              {m.contactCardData?.username || translations[lang].userFallback}
                             </span>
                             {m.contactCardData?.role && (
                               <span className="text-[10px] text-muted-foreground block truncate font-medium mt-0.5">
@@ -986,7 +1283,7 @@ export default function ChatView({
                               <button
                                 onClick={() => handleCopy(m.contactCardData!.email!, `email-${idx}`)}
                                 className="p-1 hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground rounded transition cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
-                                title={lang === 'en' ? "Copy to clipboard" : "འདྲ་བཤུས་བྱེད་པ།"}
+                                title={translations[lang].copyToClipboardTooltip}
                               >
                                 {copiedField === `email-${idx}` ? (
                                   <Check className="w-3 h-3 text-emerald-500 animate-success-pop" />
@@ -1005,7 +1302,7 @@ export default function ChatView({
                               <button
                                 onClick={() => handleCopy(m.contactCardData!.phone!, `phone-${idx}`)}
                                 className="p-1 hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground rounded transition cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
-                                title={lang === 'en' ? "Copy to clipboard" : "འདྲ་བཤུས་བྱེད་པ།"}
+                                title={translations[lang].copyToClipboardTooltip}
                               >
                                 {copiedField === `phone-${idx}` ? (
                                   <Check className="w-3 h-3 text-emerald-500 animate-success-pop" />
@@ -1023,7 +1320,7 @@ export default function ChatView({
                             <button
                               onClick={() => handleCopy(m.contactCardData!.userId, `id-${idx}`)}
                               className="p-1 hover:bg-muted text-muted-foreground/60 hover:text-muted-foreground rounded transition cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
-                              title={lang === 'en' ? "Copy to clipboard" : "འདྲ་བཤུས་བྱེད་པ།"}
+                              title={translations[lang].copyToClipboardTooltip}
                             >
                               {copiedField === `id-${idx}` ? (
                                 <Check className="w-3 h-3 text-emerald-500 animate-success-pop" />
@@ -1049,7 +1346,7 @@ export default function ChatView({
                           m.contactCardData?.userId === currentUserId && (
                             <div className="px-3 pb-3 bg-muted/10 text-center">
                               <span className="text-[9px] text-muted-foreground/60 font-semibold bg-muted/30 px-2 py-1 rounded-md block select-none">
-                                {lang === 'en' ? 'Your Contact Card' : 'ང་ཡི་འབྲེལ་གཏུག་བྱང་བུ།'}
+                                {translations[lang].yourContactCard}
                               </span>
                             </div>
                           )
@@ -1066,19 +1363,43 @@ export default function ChatView({
                             {isMe && <CheckCheck className="h-3 w-3 text-brand" />}
                           </div>
                         </div>
+                        {renderMessageDropdown(m, isMe)}
                       </div>
                     ) : m.isAudio ? (
                       m.fileUrl ? (
-                        <CustomAudioPlayer src={m.fileUrl} lang={lang} />
+                        <div className="relative group/bubble">
+                          <CustomAudioPlayer src={m.fileUrl} lang={lang} />
+                          {renderMessageDropdown(m, isMe)}
+                        </div>
                       ) : null
                     ) : (
                       <div
-                        className={`px-2 py-2 rounded-xl text-xs leading-relaxed shadow-xs transition duration-200 flex flex-col ${isMe
+                        className={`px-2 py-2 rounded-xl text-xs leading-relaxed shadow-xs transition duration-200 flex flex-col relative group/bubble ${isMe
                           ? 'bg-brand text-brand-foreground rounded-br-none'
                           : 'bg-muted text-foreground rounded-bl-none'
                           }`}
                       >
-                        {/* Sender Name inside bubble */}
+                        {/* Forwarded label */}
+                        {m.isForwarded && (
+                          <div className={`flex items-center gap-1 text-[9px] mb-1 font-semibold italic select-none ${isMe ? 'text-white/60' : 'text-muted-foreground/60'}`}>
+                            <Forward className="w-2.5 h-2.5" />
+                            <span>{m.forwardedFrom ? translations[lang].forwardedFrom.replace('{name}', m.forwardedFrom) : translations[lang].forwarded}</span>
+                          </div>
+                        )}
+
+                        {/* Reply context preview */}
+                        {m.replyTo && (
+                          <div className={`mb-1.5 pl-2 border-l-2 py-0.5 rounded-sm ${isMe ? 'border-white/40 bg-white/10' : 'border-brand/50 bg-brand/5'}`}>
+                            <span className={`text-[9px] font-bold block ${isMe ? 'text-white/70' : 'text-brand'}`}>
+                              {m.replyTo.senderName}
+                            </span>
+                            <span className={`text-[10px] line-clamp-1 ${isMe ? 'text-white/60' : 'text-muted-foreground/70'}`}>
+                              {m.replyTo.text}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Sender Name inside bubble (group chats) */}
                         {m.senderName && !isMe && (
                           <span className={`text-[10px] font-normal mb-1 select-none ${getSenderNameColor(m.senderName)}`}>
                             {m.senderName}
@@ -1093,7 +1414,7 @@ export default function ChatView({
 
                           return (
                             <>
-                              {renderClickableText(m.text, isMe, containsTibetan(m.text))}
+                              {renderClickableText(m.text, isMe, containsTibetan(m.text), activeChat.members)}
 
                               {/* Image/GIF URL Preview */}
                               {hasImagePreview && (
@@ -1115,11 +1436,15 @@ export default function ChatView({
                           );
                         })()}
 
-                        {/* Time & status indicator inside bubble */}
-                        <div className={`flex items-center justify-end gap-1 m text-[8px] select-none ${isMe ? 'text-white/70' : 'text-muted-foreground/40'}`}>
+                        {/* Time & status + edited badge */}
+                        <div className={`flex items-center justify-end gap-1 mt-0.5 text-[8px] select-none ${isMe ? 'text-white/70' : 'text-muted-foreground/40'}`}>
+                          {m.isEdited && (
+                            <span className="italic">{translations[lang].edited}</span>
+                          )}
                           <span>{m.time}</span>
                           {isMe && <CheckCheck className="h-3 w-3 text-white" />}
                         </div>
+                        {renderMessageDropdown(m, isMe)}
                       </div>
                     )}
                   </div>
@@ -1151,7 +1476,7 @@ export default function ChatView({
                         <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:-0.15s]"></span>
                         <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce"></span>
                       </div>
-                      <span className="text-[10px] italic">{lang === 'en' ? 'Thinking...' : 'བསམ་བློ་གཏོང་བཞིན་པ།...'}</span>
+                      <span className="text-[10px] italic">{translations[lang].thinking}</span>
                     </div>
                   </div>
                 </div>
@@ -1164,7 +1489,80 @@ export default function ChatView({
 
         {/* Input Section */}
         <div className="p-3 border-t bg-card flex flex-col relative shrink-0">
-          
+
+          {/* Mention Autocomplete Dropdown */}
+          {mentionResults.length > 0 && mentionQuery !== null && (
+            <div className="absolute bottom-full left-3 right-3 mb-1 bg-card border border-muted/30 rounded-xl shadow-xl overflow-hidden z-50 animate-in slide-in-from-bottom-2 fade-in duration-150">
+              {mentionResults.map((member) => (
+                <button
+                  key={member.id}
+                  onClick={() => insertMention(member)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-muted text-left transition cursor-pointer border-none bg-transparent"
+                >
+                  <div className="relative shrink-0">
+                    <Avatar className="h-6 w-6 border border-muted-foreground/10 rounded-full">
+                      <AvatarImage src={member.avatar} alt={member.name} className="object-cover rounded-full" />
+                      <AvatarFallback className="bg-brand-light text-brand text-[8px] font-bold rounded-full">
+                        {member.name.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className={`absolute bottom-0 right-0 h-1.5 w-1.5 rounded-full ${member.online === true ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-semibold text-foreground block truncate">{member.name}</span>
+                    <span className="text-[9px] text-muted-foreground font-mono truncate block">{member.id}</span>
+                  </div>
+                  <AtSign className="w-3 h-3 text-brand shrink-0 ml-auto" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Compose URL Preview */}
+          {composeUrl && (
+            <div className="mb-2 relative w-fit max-w-[340px] md:max-w-[400px] animate-in slide-in-from-bottom-2 fade-in duration-150">
+              <LinkPreviewCard url={composeUrl} />
+              <button
+                onClick={() => setDismissedUrl(composeUrl)}
+                className="absolute top-4 right-2.5 p-1 bg-black/60 hover:bg-black/80 rounded-full transition text-white hover:text-white border-none cursor-pointer flex items-center justify-center shadow-md z-30"
+                title="Remove preview"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Reply / Edit Preview Banner */}
+          {(replyTo || editingMessage) && (
+            <div className={`mb-2 flex items-start gap-2 px-3 py-2 rounded-xl border animate-in slide-in-from-bottom-2 fade-in duration-150 ${
+              editingMessage
+                ? 'bg-amber-500/5 border-amber-500/20'
+                : 'bg-brand/5 border-brand/20'
+            }`}>
+              <div className="shrink-0 mt-0.5">
+                {editingMessage
+                  ? <Edit2 className="w-3.5 h-3.5 text-amber-500" />
+                  : <Reply className="w-3.5 h-3.5 text-brand" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className={`text-[9px] font-bold uppercase tracking-wider block mb-0.5 ${
+                  editingMessage ? 'text-amber-500' : 'text-brand'
+                }`}>
+                  {editingMessage ? translations[lang].editingMessage : `${translations[lang].replyingTo} ${replyTo?.senderName || ''}`}
+                </span>
+                <span className="text-[11px] text-muted-foreground line-clamp-1">
+                  {editingMessage ? editingMessage.text : replyTo?.text}
+                </span>
+              </div>
+              <button
+                onClick={cancelReplyOrEdit}
+                className="p-0.5 hover:bg-muted rounded-full transition text-muted-foreground/60 hover:text-muted-foreground border-none bg-transparent cursor-pointer shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Uploading Overlay */}
           {isUploading && (
             <div className="absolute inset-x-0 bottom-full px-4 py-2.5 bg-card/95 backdrop-blur-md border-t border-muted/20 flex items-center gap-2.5 z-20 animate-in fade-in slide-in-from-bottom-2 duration-200">
@@ -1198,7 +1596,7 @@ export default function ChatView({
                 {filteredEmojiCategories.map((cat, catIdx) => (
                   <div key={catIdx} className="mb-3">
                     <span className="text-[9px] font-bold text-muted-foreground uppercase px-1 block mb-1">
-                      {lang === 'bo' ? translations[lang][`emoji${cat.name}` as keyof typeof translations.bo] : translations[lang][`emoji${cat.name}` as keyof typeof translations.en]}
+                      {translations[lang][`emoji${cat.name}` as TranslationKey]}
                     </span>
                     <div className="grid grid-cols-8 gap-1">
                       {cat.emojis.map((emoji, emoIdx) => (
@@ -1255,7 +1653,7 @@ export default function ChatView({
                     className="w-full px-2.5 py-1.5 hover:bg-muted text-xs font-semibold rounded-lg text-left transition flex items-center gap-2 text-foreground cursor-pointer border-none bg-transparent"
                   >
                     <Image className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                    <span>{lang === 'en' ? 'Upload Image / Video' : 'པར་དང་བརྙན་ལེན།'}</span>
+                    <span>{translations[lang].uploadImageVideo}</span>
                   </button>
                   <button
                     onClick={() => {
@@ -1265,7 +1663,7 @@ export default function ChatView({
                     className="w-full px-2.5 py-1.5 hover:bg-muted text-xs font-semibold rounded-lg text-left transition flex items-center gap-2 text-foreground cursor-pointer border-none bg-transparent"
                   >
                     <Paperclip className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span>{lang === 'en' ? 'Upload Document' : 'ཡིག་ཆ་སྦྲག་རྒྱུ།'}</span>
+                    <span>{translations[lang].uploadDocument}</span>
                   </button>
                 </>
               )}
@@ -1278,7 +1676,7 @@ export default function ChatView({
                   className="w-full px-2.5 py-1.5 hover:bg-muted text-xs font-semibold rounded-lg text-left transition flex items-center gap-2 text-foreground cursor-pointer border-none bg-transparent"
                 >
                   <Users className="w-3.5 h-3.5 text-brand shrink-0" />
-                  <span>{lang === 'en' ? 'Share Contact Card' : 'འབྲེལ་གཏུག་བྱང་བུ་བགོ་སྐལ།'}</span>
+                  <span>{translations[lang].shareContactCard}</span>
                 </button>
               )}
             </div>
@@ -1290,7 +1688,7 @@ export default function ChatView({
               <button
                 onClick={() => setMediaDropdownOpen(!mediaDropdownOpen)}
                 className={`p-1.5 rounded-full transition cursor-pointer border-none bg-transparent shrink-0 ${mediaDropdownOpen ? 'bg-brand/10 text-brand' : 'text-muted-foreground hover:text-brand hover:bg-muted'}`}
-                title={lang === 'en' ? "Attach assets" : "ཡིག་ཆ་སྦྲག་རྒྱུ།"}
+                title={translations[lang].attachAssetsTooltip}
                 disabled={isRecording}
               >
                 <Plus className="h-5 w-5" />
@@ -1318,24 +1716,29 @@ export default function ChatView({
                   <button
                     onClick={cancelRecording}
                     className="p-1 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-full transition active:scale-90 cursor-pointer border-none bg-transparent"
-                    title={lang === 'en' ? "Cancel recording" : "སྐད་འཇུག་ཕྱིར་འཐེན།"}
+                    title={translations[lang].cancelRecordingTooltip}
                   >
                     <Trash2 className="h-4.5 w-4.5" />
                   </button>
                   <button
                     onClick={stopAndSendRecording}
                     className="p-1.5 bg-rose-500 text-white hover:bg-rose-600 rounded-full transition active:scale-90 shadow-sm cursor-pointer border-none"
-                    title={lang === 'en' ? "Send voice message" : "སྐད་འཕྲིན་གཏོང་བ།"}
+                    title={translations[lang].sendVoiceTooltip}
                   >
                     <Check className="h-4 w-4" />
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="flex-1 bg-muted/60 dark:bg-muted/30 rounded-xl px-3 py-1.5 flex items-center justify-between border border-transparent focus-within:border-brand/40 transition duration-150">
+              <div className={`flex-1 rounded-xl px-3 py-1.5 flex items-center justify-between border transition duration-150 ${
+                editingMessage
+                  ? 'bg-amber-500/5 border-amber-500/30 focus-within:border-amber-500/50'
+                  : 'bg-muted/60 dark:bg-muted/30 border-transparent focus-within:border-brand/40'
+              }`}>
                 <input
+                  ref={inputRef}
                   type="text"
-                  placeholder={translations[lang].typeMessage}
+                  placeholder={editingMessage ? translations[lang].editingMessage + '...' : (replyTo ? `${translations[lang].replyingTo} ${replyTo.senderName}...` : translations[lang].typeMessage)}
                   value={msgText}
                   onChange={(e) => onMsgTextChange(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -1347,7 +1750,7 @@ export default function ChatView({
                     <button
                       onClick={() => setIsEmojiPickerOpen(!isEmojiPickerOpen)}
                       className={`text-muted-foreground hover:text-foreground transition p-0.5 cursor-pointer border-none bg-transparent ${isEmojiPickerOpen ? 'text-brand' : ''}`}
-                      title={lang === 'en' ? "Add emoji" : "མཚོན་རྟགས་སྦྲག་རྒྱུ།"}
+                      title={translations[lang].addEmojiTooltip}
                     >
                       <Smile className="h-4.5 w-4.5" />
                     </button>
@@ -1357,7 +1760,7 @@ export default function ChatView({
                     <button
                       onClick={startRecording}
                       className="text-muted-foreground hover:text-brand transition p-0.5 cursor-pointer border-none bg-transparent"
-                      title={lang === 'en' ? "Record voice message" : "སྐད་འཕྲིན་སྐད་འཇུག"}
+                      title={translations[lang].recordVoiceTooltip}
                     >
                       <Mic className="h-4.5 w-4.5" />
                     </button>
@@ -1368,15 +1771,16 @@ export default function ChatView({
 
             {!isRecording && (
               <button
-                onClick={onSendMessage}
-                disabled={!msgText.trim()}
-                className={`p-2 rounded-full shrink-0 transition shadow-sm active:scale-95 border-none cursor-pointer ${msgText.trim()
-                  ? 'bg-brand hover:bg-brand-hover text-brand-foreground'
-                  : 'bg-muted text-muted-foreground cursor-not-allowed'
+                onClick={handleSendOrEdit}
+                disabled={!msgText.trim() || isSubmittingAction}
+                className={`p-2 rounded-full shrink-0 transition shadow-sm active:scale-95 border-none cursor-pointer ${
+                  editingMessage
+                    ? msgText.trim() ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-muted text-muted-foreground cursor-not-allowed'
+                    : msgText.trim() ? 'bg-brand hover:bg-brand-hover text-brand-foreground' : 'bg-muted text-muted-foreground cursor-not-allowed'
                   }`}
-                title={lang === 'en' ? "Send message" : "ཡིག་འཕྲིན་གཏོང་རྒྱུ།"}
+                title={editingMessage ? translations[lang].saveLabel : translations[lang].sendMessageTooltip}
               >
-                <Send className="h-3.5 w-3.5" />
+                {editingMessage ? <Check className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}
               </button>
             )}
           </div>
@@ -1404,7 +1808,7 @@ export default function ChatView({
 
           {/* Panel Header */}
           <div className="px-4 py-3.5 border-b flex items-center justify-between font-bold text-sm tracking-tight bg-card">
-            <h4 className="font-bold text-sm">{lang === 'en' ? 'Room Details' : 'གླེང་མོལ་ཁང་གི་གནས་ཚུལ།'}</h4>
+            <h4 className="font-bold text-sm">{translations[lang].roomDetailsHeader}</h4>
             <button
               onClick={() => setShowRoomDetails(false)}
               className="p-1 hover:bg-muted rounded-full transition"
@@ -1427,7 +1831,7 @@ export default function ChatView({
                       </AvatarFallback>
                     </Avatar>
                     <label className="absolute inset-0 bg-black/45 text-white rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 text-[8px] font-bold text-center p-1 select-none cursor-pointer">
-                      {lang === 'en' ? 'Upload Photo' : 'པར་တင်རྒྱུ།'}
+                      {translations[lang].uploadPhoto}
                       <input type="file" accept="image/*" onChange={handleAvatarFileChange} className="hidden" />
                     </label>
                   </div>
@@ -1435,24 +1839,24 @@ export default function ChatView({
 
                 {/* Edit Name */}
                 <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{lang === 'en' ? 'Room Name' : 'གླེང་མོལ་ཁང་གི་མིང་།'}</label>
+                  <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{translations[lang].roomNameLabel}</label>
                   <Input
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     className="text-xs h-8 bg-card"
-                    placeholder={lang === 'en' ? 'Room name' : 'གླེང་མོལ་ཁང་གི་མིང་།'}
+                    placeholder={translations[lang].roomNamePlaceholder}
                   />
                 </div>
 
                 {/* Edit Topic */}
                 <div className="space-y-1">
-                  <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{lang === 'en' ? 'Room Description' : 'གླེང་མོལ་ཁང་གི་བཤད་པ།'}</label>
+                  <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">{translations[lang].roomDescriptionLabel}</label>
                   <textarea
                     value={editTopic}
                     onChange={(e) => setEditTopic(e.target.value)}
                     className="w-full text-xs p-2 bg-card border border-muted-foreground/15 rounded-md focus:ring-1 focus:ring-brand outline-none text-foreground resize-none h-16"
-                    placeholder={lang === 'en' ? 'Room description...' : 'གླེང་མོལ་ཁང་གི་བཤད་པ།...'}
+                    placeholder={translations[lang].roomDescriptionPlaceholder}
                   />
                 </div>
 
@@ -1463,14 +1867,14 @@ export default function ChatView({
                     disabled={isSavingDetails || !editName.trim()}
                     className="flex-1 py-1.5 bg-brand hover:bg-brand-hover text-brand-foreground rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 active:scale-95 disabled:opacity-50 cursor-pointer"
                   >
-                    {isSavingDetails ? (lang === 'en' ? 'Saving...' : 'ཉར་བཞིན་པ།...') : (lang === 'en' ? 'Save' : 'ཉར་ཚགས།')}
+                    {isSavingDetails ? translations[lang].saving : translations[lang].saveLabel}
                   </button>
                   <button
                     onClick={() => setIsEditingDetails(false)}
                     disabled={isSavingDetails}
                     className="flex-1 py-1.5 bg-muted hover:bg-muted/80 text-foreground border border-muted rounded-lg text-[10px] font-bold transition active:scale-95 cursor-pointer"
                   >
-                    {lang === 'en' ? 'Cancel' : 'ཕྱིར་འཐེན།'}
+                    {translations[lang].cancel}
                   </button>
                 </div>
               </div>
@@ -1502,17 +1906,17 @@ export default function ChatView({
                 </h3>
 
                 <span className="text-[10px] text-muted-foreground mt-1 bg-muted px-2 py-0.5 rounded-md font-mono select-all">
-                  {activeChat.isGroup ? (lang === 'en' ? 'Group Chat' : 'ཚོགས་པའི་གླེང་མོལ།') : (lang === 'en' ? 'Direct Conversation' : 'སྒེར་གྱི་སྐད་ཆ།')}
+                  {activeChat.isGroup ? translations[lang].groupChatLabel : translations[lang].directConversationLabel}
                 </span>
 
                 {activeChat.topic ? (
                   <div className="text-[11px] text-muted-foreground text-center px-4 mt-3 leading-relaxed break-words border-t border-muted/20 pt-3 w-full">
-                    <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1">{lang === 'en' ? 'Room Topic' : 'གླེང་མོལ་ཁང་གི་བརྗོད་གཞི།'}</span>
+                    <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1">{translations[lang].roomTopicLabel}</span>
                     <p className="text-foreground/90">{activeChat.topic}</p>
                   </div>
                 ) : (
                   <div className="text-[10px] text-muted-foreground/60 italic text-center mt-3 border-t border-muted/20 pt-3 w-full">
-                    {lang === 'en' ? 'No topic description set for this room.' : 'གླེང་མོལ་ཁང་འདིར་བརྗོད་གཞི་བཀོད་མི་འདུག'}
+                    {translations[lang].noRoomTopic}
                   </div>
                 )}
 
@@ -1528,19 +1932,19 @@ export default function ChatView({
                     className="mt-3.5 px-3 py-1.5 border border-muted bg-card hover:bg-muted text-xs font-bold rounded-lg flex items-center gap-1.5 transition active:scale-95 text-brand cursor-pointer"
                   >
                     <Edit className="h-3.5 w-3.5" />
-                    {lang === 'en' ? 'Edit Details' : 'གནས་ཚུལ་བཟོ་བཅོས།'}
+                    {translations[lang].editDetailsLabel}
                   </button>
                 )}
 
                 {/* Room ID section */}
                 <div className="w-full mt-4 border-t border-muted/20 pt-3">
-                  <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1 px-1">{lang === 'en' ? 'Room Coordinate ID' : 'གླེང་མོལ་ཁང་གི་ཨང་རྟགས།'}</span>
+                  <span className="font-semibold block text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1 px-1">{translations[lang].roomCoordinateIdLabel}</span>
                   <div className="bg-muted/45 border border-muted p-2 rounded-xl text-[9px] font-mono break-all flex items-center justify-between gap-1.5 shadow-2xs">
                     <span className="truncate flex-1 select-all">{activeChat.id}</span>
                     <button
                       onClick={() => navigator.clipboard.writeText(activeChat.id)}
                       className="p-1 hover:bg-muted text-brand hover:text-brand-hover rounded-md transition shrink-0"
-                      title={lang === 'en' ? "Copy ID" : "ཨང་རྟགས་འདྲ་བཟོ།"}
+                      title={translations[lang].copyIdTooltip}
                     >
                       <Copy className="h-3.5 w-3.5" />
                     </button>
@@ -1553,21 +1957,21 @@ export default function ChatView({
             {activeChat.isGroup && activeChat.isAdmin && onInviteUser && (
               <div className="px-4 py-3 border-b border-muted/20">
                 <span className="text-[10px] tracking-wider uppercase font-bold text-muted-foreground block mb-2">
-                  {lang === 'en' ? 'Invite New Member' : 'ཚོགས་མི་གསར་པ་གདན་འདྲེན།'}
+                  {translations[lang].inviteNewMemberLabel}
                 </span>
                 <form onSubmit={handleInviteUserAction} className="flex gap-1.5">
                   <Input
                     type="text"
                     value={inviteId}
                     onChange={(e) => setInviteId(e.target.value)}
-                    placeholder={lang === 'en' ? 'e.g. username or @user:domain' : 'སྤྱོད་མིང་འཇུག་རོགས།'}
+                    placeholder={translations[lang].invitePlaceholder}
                     className="text-xs h-8 bg-card flex-1"
                   />
                   <button
                     type="submit"
                     disabled={isInviting || !inviteId.trim()}
                     className="px-3 bg-brand hover:bg-brand-hover text-brand-foreground rounded-lg text-xs font-bold transition active:scale-95 disabled:opacity-50 cursor-pointer flex items-center justify-center shrink-0"
-                    title={lang === 'en' ? 'Invite' : 'གདན་འདྲེན་ཞུ།'}
+                    title={translations[lang].invite}
                   >
                     {isInviting ? (
                       <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -1585,7 +1989,7 @@ export default function ChatView({
             {/* Member List section */}
             <div className="py-4">
               <span className="text-[10px] tracking-wider uppercase font-bold text-muted-foreground px-4 mb-2 block">
-                {lang === 'en' ? `Team Members (${activeChat.members?.length || 0})` : `ཚོགས་མི། (${activeChat.members?.length || 0})`}
+                {translations[lang].teamMembersLabel.replace('{count}', String(activeChat.members?.length || 0))}
               </span>
 
               <div className="divide-y divide-muted/10 ">
@@ -1608,9 +2012,29 @@ export default function ChatView({
                         </div>
 
                         <div className="min-w-0 leading-tight">
-                          <span className="text-xs font-semibold text-foreground truncate block">
-                            {member.name}
-                          </span>
+                          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                            <span className="text-xs font-semibold text-foreground truncate">
+                              {member.name}
+                            </span>
+                            {/* Admin Indicator */}
+                            {(member.role === 'Admin' || member.role === 'Admin (Me)') && (
+                              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0 bg-brand-light text-brand-light-foreground">
+                                {translations[lang].adminLabel}
+                              </span>
+                            )}
+                            {/* Me Indicator */}
+                            {(member.role === 'Me' || member.role === 'Admin (Me)') && (
+                              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0 bg-muted text-muted-foreground">
+                                {translations[lang].meLabel}
+                              </span>
+                            )}
+                            {/* Moderator Indicator */}
+                            {member.role === 'Moderator' && (
+                              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0 bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200">
+                                {translations[lang].moderatorLabel}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-[9px] text-muted-foreground truncate block font-mono">
                             {member.id}
                           </span>
@@ -1618,31 +2042,26 @@ export default function ChatView({
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        {member.role && (
-                          <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase shrink-0 ${
-                            member.role === 'Me' || member.role === 'Admin' || member.role === 'Admin (Me)'
-                              ? 'bg-brand-light text-brand-light-foreground'
-                              : member.role === 'Moderator'
-                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-200'
-                              : 'bg-muted text-muted-foreground'
-                            }`}>
-                            {member.role === 'Me'
-                              ? (lang === 'en' ? 'Me' : 'བདག་ཉིད།')
-                              : member.role === 'Admin'
-                              ? (lang === 'en' ? 'Admin' : 'དོ་དམ་པ།')
-                              : member.role === 'Admin (Me)'
-                              ? (lang === 'en' ? 'Admin (Me)' : 'དོ་དམ་པ། (བདག་ཉིད།)')
-                              : member.role === 'Moderator'
-                              ? (lang === 'en' ? 'Moderator' : 'བར་འདུམ་པ།')
-                              : member.role}
-                          </span>
+                        {/* Direct Message Option */}
+                        {member.role !== 'Me' && member.role !== 'Admin (Me)' && onConnectChat && (
+                          <button
+                            onClick={() => {
+                              onConnectChat(member.id);
+                              setShowRoomDetails(false);
+                            }}
+                            className="p-1.5 hover:bg-brand/10 text-muted-foreground hover:text-brand rounded-md transition shrink-0 cursor-pointer border-none bg-transparent flex items-center justify-center"
+                            title={translations[lang].messageUser}
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                          </button>
                         )}
 
+                        {/* Remove User Action */}
                         {activeChat.isGroup && activeChat.isAdmin && member.id !== activeChat.members?.[0]?.id && member.role !== 'Me' && member.role !== 'Admin (Me)' && onRemoveUser && (
                           <button
                             onClick={() => handleRemoveUserAction(member.id)}
                             className="p-1.5 hover:bg-rose-500/10 text-rose-500 rounded-md transition shrink-0 cursor-pointer"
-                            title={lang === 'en' ? `Remove ${member.name}` : `ཕྱིར་འབུད་བྱེད་རྒྱུ།`}
+                            title={translations[lang].removeMemberTooltip.replace('{name}', member.name)}
                           >
                             <UserMinus className="w-3.5 h-3.5" />
                           </button>
@@ -1652,7 +2071,7 @@ export default function ChatView({
                   ))
                 ) : (
                   <div className="px-4 py-3 text-center text-xs text-muted-foreground italic">
-                    {lang === 'en' ? 'No members roster loaded.' : 'ཚོགས་མིའི་ཐོ་གཞུང་འཐེན་མི་འདུག'}
+                    {translations[lang].noMembersRoster}
                   </div>
                 )}
               </div>
@@ -1666,14 +2085,106 @@ export default function ChatView({
                 onClick={handleLeaveRoomAction}
                 className="w-full py-2 border border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10 text-rose-500 rounded-lg text-xs font-bold transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
               >
-                {activeChat.isAdmin ? (
-                  lang === 'en' ? 'Destroy Room (Leave)' : 'གླེང་མོལ་ཁང་མེད་པར་བཟོ་བ།'
-                ) : (
-                  lang === 'en' ? 'Leave Room' : 'གླེང་མོལ་ཁང་ནས་ཐོན་པ།'
-                )}
+                {activeChat.isAdmin ? translations[lang].destroyRoomButton : translations[lang].leaveRoomButton}
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Forward Message Modal */}
+      {forwardingMessage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setForwardingMessage(null)}
+        >
+          <div
+            className="bg-card border border-muted/50 rounded-2xl shadow-2xl flex flex-col max-w-sm mx-auto w-full overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-4 py-3 border-b flex justify-between items-center">
+              <div>
+                <h4 className="font-bold text-xs flex items-center gap-1.5">
+                  <Forward className="w-3.5 h-3.5 text-brand" />
+                  {translations[lang].forwardMessage}
+                </h4>
+                <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
+                  {forwardingMessage.text}
+                </p>
+              </div>
+              <button
+                onClick={() => setForwardingMessage(null)}
+                className="p-1 hover:bg-muted rounded-full transition text-muted-foreground border-none bg-transparent cursor-pointer shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="px-3 py-2 border-b">
+              <input
+                type="text"
+                placeholder={translations[lang].searchConversations}
+                value={forwardSearchQuery}
+                onChange={(e) => setForwardSearchQuery(e.target.value)}
+                autoFocus
+                className="w-full px-3 py-1.5 text-xs bg-muted/50 border border-muted/30 rounded-lg outline-none focus:border-brand/40 text-foreground"
+              />
+            </div>
+
+            {/* Chat List */}
+            <div className="flex-1 overflow-y-auto max-h-64 divide-y divide-muted/10">
+              {(chats || []).filter(c =>
+                c.id !== activeChat.id &&
+                c.name.toLowerCase().includes(forwardSearchQuery.toLowerCase())
+              ).map(chat => (
+                <button
+                  key={chat.id}
+                  onClick={() => handleConfirmForward(chat)}
+                  disabled={isSubmittingAction}
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 hover:bg-muted transition cursor-pointer border-none bg-transparent text-left"
+                >
+                  <Avatar className={`h-8 w-8 border border-muted-foreground/10 shrink-0 ${chat.isGroup ? 'rounded-xl' : 'rounded-full'}`}>
+                    <AvatarImage src={chat.avatar} alt={chat.name} className={`object-cover ${chat.isGroup ? 'rounded-xl' : 'rounded-full'}`} />
+                    <AvatarFallback className={`text-[10px] font-bold ${chat.isGroup ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-100 rounded-xl' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-100 rounded-full'}`}>
+                      {chat.initials || chat.name.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <span className="text-xs font-semibold text-foreground truncate block flex items-center gap-1">
+                      {chat.isGroup && <Hash className="w-3 h-3 text-indigo-500 shrink-0" />}
+                      {chat.name}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground truncate block">
+                      {chat.isGroup
+                        ? translations[lang].membersCount.replace('{count}', String(chat.members?.length || 0))
+                        : (chat.online === true ? translations[lang].online : translations[lang].offline)}
+                    </span>
+                  </div>
+                  <Forward className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0 ml-auto" />
+                </button>
+              ))}
+              {(chats || []).filter(c =>
+                c.id !== activeChat.id &&
+                c.name.toLowerCase().includes(forwardSearchQuery.toLowerCase())
+              ).length === 0 && (
+                <div className="py-8 text-center text-xs text-muted-foreground italic">
+                  {translations[lang].noConversations}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 py-3 border-t bg-muted/5 flex justify-end">
+              <button
+                onClick={() => setForwardingMessage(null)}
+                className="px-3 h-8 rounded-lg text-xs font-bold text-muted-foreground hover:bg-muted transition cursor-pointer border-none bg-transparent"
+              >
+                {translations[lang].cancel}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1687,14 +2198,14 @@ export default function ChatView({
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition flex items-center justify-center cursor-pointer shadow-md"
-              title={lang === 'en' ? "Download Image" : "པར་འདྲེན་ལེན།"}
+              title={translations[lang].downloadImageTooltip}
             >
               <Download className="h-5 w-5" />
             </a>
             <button
               onClick={() => setLightboxImageUrl(null)}
               className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition flex items-center justify-center cursor-pointer shadow-md border-none"
-              title={lang === 'en' ? "Close" : "སྒོ་རྒྱག"}
+              title={translations[lang].closeTooltip}
             >
               <X className="h-5 w-5" />
             </button>
@@ -1718,7 +2229,7 @@ export default function ChatView({
             {/* Modal Header */}
             <div className="px-4 py-3 border-b flex justify-between items-center bg-card">
               <h4 className="font-bold text-xs">
-                {lang === 'en' ? 'Share My Contact Card' : 'ང་ཡི་འབྲེལ་གཏུག་བྱང་བུ་བགོ་སྐལ།'}
+                {translations[lang].shareMyContactCardHeader}
               </h4>
               <button
                 onClick={() => setIsContactCardModalOpen(false)}
@@ -1731,9 +2242,7 @@ export default function ChatView({
             {/* Modal Body */}
             <div className="p-4 space-y-3 bg-muted/5">
               <p className="text-[10.5px] text-muted-foreground leading-relaxed">
-                {lang === 'en' 
-                  ? 'Select which information coordinates to include in your contact card before sharing.' 
-                  : 'བགོ་སྐལ་མ་བྱས་གོང་འབྲེལ་གཏུག་བྱང་བུའི་ནང་དོན་འདེམས་དགོས།'}
+                {translations[lang].shareCardInstructions}
               </p>
 
               {/* Live Preview Card containing toggles inside */}
@@ -1764,7 +2273,7 @@ export default function ChatView({
                   {/* Right-aligned toggles for Name and Role */}
                   <div className="flex flex-col gap-1 items-end justify-center shrink-0 border-l border-muted/10 pl-2">
                     <label className="flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground cursor-pointer select-none">
-                      <span>{lang === 'en' ? 'Name' : 'མིང་།'}</span>
+                      <span>{translations[lang].nameLabel}</span>
                       <input
                         type="checkbox"
                         checked={shareName}
@@ -1773,7 +2282,7 @@ export default function ChatView({
                       />
                     </label>
                     <label className="flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground cursor-pointer select-none">
-                      <span>{lang === 'en' ? 'Title' : 'ལས་གནས།'}</span>
+                      <span>{translations[lang].titleLabel}</span>
                       <input
                         type="checkbox"
                         checked={shareRole}
@@ -1833,13 +2342,13 @@ export default function ChatView({
                 onClick={() => setIsContactCardModalOpen(false)}
                 className="px-3 h-8 rounded-lg text-xs font-bold text-muted-foreground hover:bg-muted transition cursor-pointer border-none bg-transparent"
               >
-                {lang === 'en' ? 'Cancel' : 'ཕྱིར་འཐེན།'}
+                {translations[lang].cancel}
               </button>
               <button
                 onClick={handleShareCard}
                 className="px-4 h-8 bg-brand hover:bg-brand-hover text-brand-foreground text-xs font-bold rounded-lg transition active:scale-95 cursor-pointer border-none shadow-sm"
               >
-                {lang === 'en' ? 'Share' : 'བགོ་སྐལ་བྱ།'}
+                {translations[lang].shareLabel}
               </button>
             </div>
           </div>
