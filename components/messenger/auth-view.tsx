@@ -82,7 +82,7 @@ export default function AuthView({ onAuthSuccess }: AuthViewProps) {
         {/* Header Section */}
         <div className="text-center space-y-3">
           <div className="mx-auto h-10 w-auto max-w-[180px] flex items-center justify-center mb-1">
-            <img src="/tchrd-logo-small.svg" alt="Logo" className="h-8 w-auto object-contain" />
+            <img src="/logo.svg" alt="Logo" className="h-8 w-auto object-contain" />
           </div>
           <h2 className="text-lg font-bold tracking-tight text-white">
             {t.nextChat}

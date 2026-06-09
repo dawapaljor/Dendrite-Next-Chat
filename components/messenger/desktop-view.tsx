@@ -132,7 +132,7 @@ export default function DesktopView({
           <div className="flex flex-col items-center gap-6 w-full">
             {/* Logo Sphere */}
             <div className="h-10 w-12 flex items-center justify-center">
-              <img src="/tchrd-logo-small.svg" alt="Logo" className="h-6 w-auto max-w-full object-contain" />
+              <img src="/logo.svg" alt="Logo" className="h-6 w-auto max-w-full object-contain" />
             </div>
 
             {/* Icon list */}
