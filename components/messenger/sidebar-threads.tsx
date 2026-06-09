@@ -68,7 +68,7 @@ export default function SidebarThreads({
       </div>
 
       {/* Threads List with custom scroll area */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="flex flex-col">
           {filteredThreads.map((thread) => {
             const isActive = activeId === thread.id;

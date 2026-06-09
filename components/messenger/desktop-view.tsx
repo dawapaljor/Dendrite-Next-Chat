@@ -199,11 +199,11 @@ export default function DesktopView({
         </div>
 
         {/* PANEL 2: SWITCHABLE MIDDLE PANEL */}
-        <div className={`border-r border-muted flex flex-col bg-card relative ${isMobileChatActive && desktopScreen === 'chats' && !isCreatingGroup
+        <div className={`border-r border-muted flex flex-col h-full bg-card relative ${isMobileChatActive && desktopScreen === 'chats' && !isCreatingGroup
             ? 'hidden md:flex md:w-80 md:shrink-0'
-            : 'flex w-full md:w-80 md:shrink-0 h-full'
+            : 'flex w-full md:w-80 md:shrink-0'
           }`}>
-          <div className="flex-1 min-h-0 relative">
+          <div className="flex-1 min-h-0 relative flex flex-col">
             {isCreatingGroup ? (
               <NewGroupView
                 contacts={contacts}
