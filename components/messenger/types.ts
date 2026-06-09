@@ -6,9 +6,20 @@ export interface Message {
   time: string;
   isImage?: boolean;
   isFile?: boolean;
+  isAudio?: boolean;
+  fileUrl?: string;
   fileName?: string;
   fileSize?: string;
   read?: boolean;
+  isContactCard?: boolean;
+  contactCardData?: {
+    userId: string;
+    username?: string;
+    role?: string;
+    email?: string;
+    phone?: string;
+    avatarUrl?: string;
+  };
 }
 
 export interface ChatThread {

@@ -89,5 +89,24 @@ export const bo = {
   supportCenter: "རོགས་རམ་ལྟེ་གནས།",
   logoutSession: "ཕྱིར་འཐེན་བྱེད་རྒྱུ།",
   language: "སྐད་རིགས།",
-  toggleLanguage: "སྐད་རིགས་བརྗེ་རྒྱུ་ (བོད་སྐད་ / English)"
+  toggleLanguage: "སྐད་རིགས་བརྗེ་རྒྱུ་ (བོད་སྐད་ / English)",
+  
+  // Chat Improvements
+  recording: "སྐད་འཇུག་བྱེད་བཞིན་པ།...",
+  uploading: "ཡར་སྤྲོད་བྱེད་བཞིན་པ།...",
+  uploadFailed: "ཡིག་ཆ་ཡར་སྤྲོད་མ་ཐུབ།",
+  micPermissionDenied: "སྐད་ལེན་དབང་ཆ་མི་འདུག",
+  voiceMessage: "སྐད་འཕྲིན།",
+  emojiSearch: "མཚོན་རྟགས་འཚོལ་བ།...",
+  emojiSmileys: "གདོང་རྟགས།",
+  emojiPeople: "མི།",
+  emojiAnimals: "རང་བྱུང་།",
+  emojiFood: "ཟས་རིགས།",
+  emojiActivities: "བྱ་འགུལ།",
+  emojiTravel: "འགྲུལ་བཞུད།",
+  emojiObjects: "དངོས་པོ།",
+  emojiSymbols: "རྟགས།",
+  emojiFlags: "དར་ཆ།",
+  contactCard: "འབྲེལ་གཏུག་བྱང་བུ།",
+  messageUser: "ཡིག་འཕྲིན་གཏོང་།"
 };

@@ -82,26 +82,28 @@ export default function Home() {
     const savedProfile = localStorage.getItem('saas_profile');
     const savedLang = localStorage.getItem('app_language');
     
-    if (savedLang === 'en' || savedLang === 'bo') {
-      setLang(savedLang);
-    }
-    if (savedTheme === 'light' || savedTheme === 'dark') {
-      setAppTheme(savedTheme);
-    }
-    if (savedProfile) {
-      try {
-        setProfileSettings(JSON.parse(savedProfile));
-      } catch (_) {}
-    }
-
     const session = getStoredSession();
-    if (session) {
-      setIsAuthenticated(true);
-      const client = getMatrixClient();
-      if (client) {
-        setMatrixClient(client);
+    
+    setTimeout(() => {
+      if (savedLang === 'en' || savedLang === 'bo') {
+        setLang(savedLang);
       }
-    }
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        setAppTheme(savedTheme);
+      }
+      if (savedProfile) {
+        try {
+          setProfileSettings(JSON.parse(savedProfile));
+        } catch (_) {}
+      }
+      if (session) {
+        setIsAuthenticated(true);
+        const client = getMatrixClient();
+        if (client) {
+          setMatrixClient(client);
+        }
+      }
+    }, 0);
   }, []);
 
   // Matrix Sync loop integration
@@ -109,7 +111,9 @@ export default function Home() {
     if (!matrixClient) return;
 
     let active = true;
-    setConnectionStatus('Connecting...');
+    setTimeout(() => {
+      if (active) setConnectionStatus('Connecting...');
+    }, 0);
 
     const fetchMatrixProfile = async () => {
       const userId = matrixClient.getUserId();
@@ -210,13 +214,24 @@ export default function Home() {
                 : '';
             }
 
+            const mxcUrl = content.url || '';
+            const httpUrl = mxcUrl ? (matrixClient.mxcUrlToHttp(mxcUrl) || '') : '';
+            const contactCard = content["org.workspace.contact_card"];
+
             return {
               sender: isMe ? 'me' : 'receiver',
               senderName: senderName,
               senderAvatar: senderAvatar,
               text: content.body || '',
               time: new Date(event.getTs()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              isImage: content.msgtype === "m.image"
+              isImage: content.msgtype === "m.image",
+              isFile: content.msgtype === "m.file" || content.msgtype === "m.video",
+              isAudio: content.msgtype === "m.audio",
+              fileUrl: httpUrl,
+              fileName: content.body || 'attachment',
+              fileSize: content.info?.size ? `${(content.info.size / 1024).toFixed(1)} KB` : undefined,
+              isContactCard: !!contactCard,
+              contactCardData: contactCard
             };
           });
 
@@ -576,25 +591,25 @@ export default function Home() {
     });
   };
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = async (overrides?: ProfileSettings) => {
     setIsSavingProfile(true);
-    let updatedProfile = { ...profileSettings };
+    let updatedProfile = overrides ? { ...overrides } : { ...profileSettings };
     
     if (matrixClient) {
       const userId = matrixClient.getUserId();
       if (userId) {
         try {
           const profile = await matrixClient.getProfileInfo(userId);
-          if (profileSettings.username && profileSettings.username !== profile.displayname) {
-            await matrixClient.setDisplayName(profileSettings.username);
+          if (updatedProfile.username && updatedProfile.username !== profile.displayname) {
+            await matrixClient.setDisplayName(updatedProfile.username);
           }
 
           // Upload custom SVG avatar to Matrix homeserver media repository
-          if (profileSettings.avatarUrl && profileSettings.avatarUrl.startsWith('/avatar/')) {
+          if (updatedProfile.avatarUrl && updatedProfile.avatarUrl.startsWith('/avatar/')) {
             try {
-              const res = await fetch(profileSettings.avatarUrl);
+              const res = await fetch(updatedProfile.avatarUrl);
               const blob = await res.blob();
-              const filename = profileSettings.avatarUrl.split('/').pop() || 'avatar.svg';
+              const filename = updatedProfile.avatarUrl.split('/').pop() || 'avatar.svg';
               const uploadResult = await matrixClient.uploadContent(blob, {
                 type: "image/svg+xml",
                 name: filename,
@@ -612,12 +627,12 @@ export default function Home() {
           }
 
           const accountDataContent = {
-            role: profileSettings.role,
-            email: profileSettings.email,
-            phone: profileSettings.phone,
-            language: profileSettings.language,
-            twoFactor: profileSettings.twoFactor,
-            readReceipts: profileSettings.readReceipts
+            role: updatedProfile.role,
+            email: updatedProfile.email,
+            phone: updatedProfile.phone,
+            language: updatedProfile.language,
+            twoFactor: updatedProfile.twoFactor,
+            readReceipts: updatedProfile.readReceipts
           };
           await matrixClient.setAccountData("org.workspace.profile_settings", accountDataContent);
         } catch (err) {
@@ -654,6 +669,87 @@ export default function Home() {
       setMsgText('');
     } catch (err) {
       console.error("Failed to send message via Matrix:", err);
+    }
+  };
+
+  // Send media message (image, file, or voice) action
+  const handleSendMediaMessage = async (file: File, isVoice: boolean = false) => {
+    if (!activeChatId || !matrixClient) return;
+
+    try {
+      // 1. Upload file to homeserver content repository
+      const uploadResult = await matrixClient.uploadContent(file, {
+        type: file.type,
+        name: file.name
+      });
+
+      if (!uploadResult || !uploadResult.content_uri) {
+        throw new Error("Matrix media upload did not return content URI");
+      }
+
+      const contentUri = uploadResult.content_uri;
+
+      // 2. Determine message type
+      let msgtype: string = "m.file";
+      if (isVoice) {
+        msgtype = "m.audio";
+      } else if (file.type.startsWith("image/")) {
+        msgtype = "m.image";
+      } else if (file.type.startsWith("video/")) {
+        msgtype = "m.video";
+      } else if (file.type.startsWith("audio/")) {
+        msgtype = "m.audio";
+      }
+
+      const content: any = {
+        body: file.name,
+        msgtype: msgtype as any,
+        url: contentUri,
+        info: {
+          mimetype: file.type,
+          size: file.size,
+        }
+      };
+
+      if (isVoice) {
+        content["org.matrix.msc3245.voice"] = {};
+      }
+
+      // 3. Send message event
+      await matrixClient.sendMessage(activeChatId, content);
+
+      // 4. Trigger local sync
+      if (syncStateRef.current) {
+        syncStateRef.current();
+      }
+    } catch (err) {
+      console.error("Failed to upload or send media message:", err);
+      throw err;
+    }
+  };
+
+  // Share contact card action
+  const handleShareContactCard = async (cardData: any) => {
+    if (!activeChatId || !matrixClient) return;
+
+    try {
+      await matrixClient.sendMessage(activeChatId, {
+        msgtype: "m.text" as any,
+        body: `Shared Contact Card: ${cardData.username || 'User'}`,
+        "org.workspace.contact_card": {
+          userId: matrixClient.getUserId(),
+          username: cardData.username,
+          role: cardData.role,
+          email: cardData.email,
+          phone: cardData.phone,
+          avatarUrl: cardData.avatarUrl
+        }
+      });
+      if (syncStateRef.current) {
+        syncStateRef.current();
+      }
+    } catch (err) {
+      console.error("Failed to send contact card:", err);
     }
   };
 
@@ -850,6 +946,7 @@ export default function Home() {
         setDesktopScreen={setDesktopScreen}
         chats={chats}
         activeChat={activeChat}
+        currentUserId={matrixClient?.getUserId() || undefined}
         chatSearchQuery={chatSearchQuery}
         setChatSearchQuery={setChatSearchQuery}
         setActiveChatId={setActiveChatId}
@@ -872,6 +969,8 @@ export default function Home() {
         msgText={msgText}
         setMsgText={setMsgText}
         onSendMessage={handleSendMessage}
+        onSendMediaMessage={handleSendMediaMessage}
+        onShareContactCard={handleShareContactCard}
         isTyping={isTyping}
         onLogout={handleLogout}
         connectionStatus={connectionStatus}

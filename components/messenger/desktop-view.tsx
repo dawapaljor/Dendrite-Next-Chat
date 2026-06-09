@@ -39,9 +39,10 @@ interface DesktopViewProps {
   discoverSearchQuery: string;
   setDiscoverSearchQuery: (q: string) => void;
   onConnectChat: (id: string) => void;
+  currentUserId?: string;
   profileSettings: ProfileSettingsType;
   setProfileSettings: React.Dispatch<React.SetStateAction<ProfileSettingsType>>;
-  onSaveProfile: () => void;
+  onSaveProfile: (overrides?: ProfileSettingsType) => Promise<void> | void;
   isSavingProfile?: boolean;
   hasSavedIndicator: boolean;
   groupName: string;
@@ -64,6 +65,8 @@ interface DesktopViewProps {
   onInviteUser?: (roomId: string, userId: string) => Promise<void>;
   onRemoveUser?: (roomId: string, userId: string) => Promise<void>;
   onLeaveRoom?: (roomId: string) => Promise<void>;
+  onSendMediaMessage?: (file: File, isVoice?: boolean) => Promise<void>;
+  onShareContactCard?: (cardData: any) => Promise<void> | void;
 }
 
 export default function DesktopView({
@@ -80,6 +83,7 @@ export default function DesktopView({
   discoverSearchQuery,
   setDiscoverSearchQuery,
   onConnectChat,
+  currentUserId,
   profileSettings,
   setProfileSettings,
   onSaveProfile,
@@ -104,7 +108,9 @@ export default function DesktopView({
   onUpdateRoomDetails,
   onInviteUser,
   onRemoveUser,
-  onLeaveRoom
+  onLeaveRoom,
+  onSendMediaMessage,
+  onShareContactCard
 }: DesktopViewProps) {
   // Mode inside desktop screen to decide if we are showing Group creator
   const [isCreatingGroup, setIsCreatingGroup] = useState<boolean>(false);
@@ -259,6 +265,8 @@ export default function DesktopView({
                 lang={lang}
                 setLang={setLang}
                 onChangePassword={onChangePassword}
+                onShareContactCard={onShareContactCard}
+                hasActiveChat={!!activeChat}
               />
             )}
           </div>
@@ -313,6 +321,7 @@ export default function DesktopView({
           }`}>
           {desktopScreen === 'chats' && activeChat && !isCreatingGroup ? (
             <ChatView
+              key={activeChat.id}
               activeChat={activeChat}
               msgText={msgText}
               onMsgTextChange={setMsgText}
@@ -324,6 +333,11 @@ export default function DesktopView({
               onInviteUser={onInviteUser}
               onRemoveUser={onRemoveUser}
               onLeaveRoom={onLeaveRoom}
+              onSendMediaMessage={onSendMediaMessage}
+              onConnectChat={onConnectChat}
+              currentUserId={currentUserId}
+              profileSettings={profileSettings}
+              onShareContactCard={onShareContactCard}
             />
           ) : (
             /* Blank overview guidelines screen when nothing active */

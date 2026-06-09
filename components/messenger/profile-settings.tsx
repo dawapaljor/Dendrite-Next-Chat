@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { User, Bell, Lock, HelpCircle, LogOut, Check, X, Eye, EyeOff } from 'lucide-react';
+import { User, Bell, Lock, HelpCircle, LogOut, Check, X, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,7 +11,7 @@ import { translations, Language } from "@/lib/translations";
 interface ProfileSettingsProps {
   settings: ProfileSettingsType;
   onSettingsChange: (updated: ProfileSettingsType) => void;
-  onSave: () => void;
+  onSave: (overrides?: ProfileSettingsType) => Promise<void> | void;
   isSaving?: boolean;
   hasSavedIndicator: boolean;
   appTheme: 'light' | 'dark';
@@ -20,6 +20,8 @@ interface ProfileSettingsProps {
   lang: Language;
   setLang: (l: Language) => void;
   onChangePassword?: (oldPass: string, newPass: string) => Promise<void>;
+  onShareContactCard?: (cardData: any) => Promise<void> | void;
+  hasActiveChat?: boolean;
 }
 
 export default function ProfileSettings({
@@ -33,7 +35,9 @@ export default function ProfileSettings({
   onLogout,
   lang,
   setLang,
-  onChangePassword
+  onChangePassword,
+  onShareContactCard,
+  hasActiveChat
 }: ProfileSettingsProps) {
 
   const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false);
@@ -45,6 +49,35 @@ export default function ProfileSettings({
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [isSavingAvatar, setIsSavingAvatar] = useState(false);
+  const [showAvatarSavedBadge, setShowAvatarSavedBadge] = useState(false);
+
+
+
+  const selectAvatar = async (avUrl: string) => {
+    setIsPickerOpen(false);
+    const newSettings = { ...settings, avatarUrl: avUrl };
+    
+    // Update local React state instantly
+    onSettingsChange(newSettings);
+    
+    // Save to server
+    setIsSavingAvatar(true);
+    try {
+      await onSave(newSettings);
+      
+      // Show checkmark badge for 2 seconds
+      setShowAvatarSavedBadge(true);
+      setTimeout(() => {
+        setShowAvatarSavedBadge(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to save avatar:", err);
+    } finally {
+      setIsSavingAvatar(false);
+    }
+  };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,35 +141,6 @@ export default function ProfileSettings({
           </div>
           <h3 className="font-bold text-sm tracking-tight">{t.activeSettings}</h3>
         </div>
-
-        {/* Dynamic Save button */}
-        <button
-          onClick={onSave}
-          disabled={isSaving || hasSavedIndicator}
-          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-1.5 active:scale-95 disabled:cursor-not-allowed shadow-md cursor-pointer ${hasSavedIndicator
-            ? 'bg-emerald-500 text-white animate-success-pop shadow-emerald-500/20'
-            : isSaving
-              ? 'animate-save-shimmer animate-save-pulse text-white shadow-brand/20 opacity-90'
-              : 'bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_12px_rgba(115,115,115,0.4)] shadow-brand/10'
-            }`}
-        >
-          {isSaving ? (
-            <>
-              <svg className="animate-spin -ml-0.5 mr-1 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>{lang === 'en' ? 'Saving...' : 'ཉར་ཚགས་བྱེད་བཞིན་པ།...'}</span>
-            </>
-          ) : hasSavedIndicator ? (
-            <>
-              <Check className="h-3.5 w-3.5 animate-bounce" />
-              <span>{t.saved}</span>
-            </>
-          ) : (
-            <span>{t.saveChanges}</span>
-          )}
-        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto w-full bg-muted/10">
@@ -145,16 +149,34 @@ export default function ProfileSettings({
           {/* Avatar and Info Card */}
           <Card className="border border-muted-foreground/10 shadow-xs rounded-xl overflow-hidden bg-card">
             <CardContent className="p-4 flex flex-col items-center">
-              <div className="relative mb-2 group cursor-pointer" onClick={() => setIsPickerOpen(true)}>
-                <Avatar className="h-16 w-16 border-2 border-brand/20 group-hover:border-brand transition duration-200 rounded-full">
+              <div className="relative mb-2 group cursor-pointer animate-in fade-in duration-200" onClick={() => !isSavingAvatar && setIsPickerOpen(true)}>
+                <Avatar className="h-20 w-20 border-2 border-brand/20 group-hover:border-brand transition duration-200 rounded-full relative">
                   <AvatarImage src={settings.avatarUrl} alt="Me" className="object-cover animate-fade-in rounded-full" />
                   <AvatarFallback className="bg-brand-light text-brand-light-foreground text-sm font-bold rounded-full flex items-center justify-center">
                     {settings.username ? settings.username.substring(0, 2).toUpperCase() : 'ME'}
                   </AvatarFallback>
                 </Avatar>
-                <div className="absolute inset-0 bg-black/40 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 text-[8px] font-bold text-center p-1 select-none">
-                  {t.changeAvatar}
-                </div>
+
+                {/* Hover overlay */}
+                {!isSavingAvatar && (
+                  <div className="absolute inset-0 bg-black/40 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 text-[8px] font-bold text-center p-1 select-none">
+                    {t.changeAvatar}
+                  </div>
+                )}
+
+                {/* Saving Indicator */}
+                {isSavingAvatar && (
+                  <div className="absolute inset-0 bg-black/60 text-white rounded-full flex items-center justify-center transition duration-200">
+                    <Loader2 className="h-5 w-5 animate-spin text-white" />
+                  </div>
+                )}
+
+                {/* Success Indicator Check Badge */}
+                {showAvatarSavedBadge && (
+                  <span className="absolute bottom-0 right-0 h-4.5 w-4.5 bg-emerald-500 text-white rounded-full flex items-center justify-center p-1 shadow-md animate-success-pop z-10">
+                    <Check className="h-2.5 w-2.5" />
+                  </span>
+                )}
               </div>
               <h4 className="font-bold text-sm text-foreground">{settings.username}</h4>
               <p className="text-[10px] text-muted-foreground text-center">{settings.role}</p>
@@ -174,7 +196,7 @@ export default function ProfileSettings({
                   type="text"
                   value={settings.username}
                   onChange={(e) => handleFieldChange('username', e.target.value)}
-                  className="text-xs h-9 bg-card"
+                  className="text-xs h-9 bg-card font-thin tracking-wide"
                 />
               </div>
 
@@ -184,7 +206,7 @@ export default function ProfileSettings({
                   type="text"
                   value={settings.role}
                   onChange={(e) => handleFieldChange('role', e.target.value)}
-                  className="text-xs h-9 bg-card"
+                  className="text-xs h-9 bg-card font-thin tracking-wide"
                 />
               </div>
 
@@ -194,7 +216,7 @@ export default function ProfileSettings({
                   type="email"
                   value={settings.email}
                   onChange={(e) => handleFieldChange('email', e.target.value)}
-                  className="text-xs h-9 bg-card"
+                  className="text-xs h-9 bg-card font-thin tracking-wide"
                 />
               </div>
 
@@ -204,8 +226,38 @@ export default function ProfileSettings({
                   type="text"
                   value={settings.phone}
                   onChange={(e) => handleFieldChange('phone', e.target.value)}
-                  className="text-xs h-9 bg-card"
+                  className="text-xs h-9 bg-card font-thin tracking-wide"
                 />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => onSave()}
+                  disabled={isSaving || hasSavedIndicator}
+                  className={`w-full h-9 rounded-lg text-xs font-bold transition-all duration-300 flex items-center justify-center gap-1.5 active:scale-95 disabled:cursor-not-allowed shadow-md cursor-pointer ${hasSavedIndicator
+                    ? 'bg-emerald-500 text-white animate-success-pop shadow-emerald-500/20'
+                    : isSaving
+                      ? 'animate-save-shimmer animate-save-pulse text-white shadow-brand/20 opacity-90'
+                      : 'bg-brand text-brand-foreground hover:bg-brand-hover hover:shadow-[0_0_12px_rgba(115,115,115,0.4)] shadow-brand/10'
+                    }`}
+                >
+                  {isSaving ? (
+                    <>
+                      <svg className="animate-spin -ml-0.5 mr-1 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>{lang === 'en' ? 'Saving...' : 'ཉར་ཚགས་བྱེད་བཞིན་པ།...'}</span>
+                    </>
+                  ) : hasSavedIndicator ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 animate-bounce" />
+                      <span>{t.saved}</span>
+                    </>
+                  ) : (
+                    <span>{t.saveChanges}</span>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -218,8 +270,8 @@ export default function ProfileSettings({
 
             <form onSubmit={handlePasswordChange} className="space-y-3">
               <h5 className="font-semibold text-xs text-foreground flex items-center gap-1.5">
-                 <Lock className="w-3.5 h-3.5 text-brand" />
-                 {lang === 'en' ? 'Change Password' : 'གསང་ཚིག་བསྒྱུར་བ།'}
+                <Lock className="w-3.5 h-3.5 text-brand" />
+                {lang === 'en' ? 'Change Password' : 'གསང་ཚིག་བསྒྱུར་བ།'}
               </h5>
 
               <div className="space-y-2.5">
@@ -233,7 +285,7 @@ export default function ProfileSettings({
                       placeholder="••••••••"
                       value={oldPassword}
                       onChange={(e) => setOldPassword(e.target.value)}
-                      className="text-xs h-9 bg-card pr-8"
+                      className="text-xs h-9 bg-card font-thin tracking-wide pr-8"
                       required
                     />
                     <button
@@ -256,7 +308,7 @@ export default function ProfileSettings({
                       placeholder="••••••••"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className="text-xs h-9 bg-card pr-8"
+                      className="text-xs h-9 bg-card font-thin tracking-wide pr-8"
                       required
                     />
                     <button
@@ -279,7 +331,7 @@ export default function ProfileSettings({
                       placeholder="••••••••"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="text-xs h-9 bg-card pr-8"
+                      className="text-xs h-9 bg-card font-thin tracking-wide pr-8"
                       required
                     />
                     <button
@@ -322,6 +374,8 @@ export default function ProfileSettings({
             </form>
           </div>
 
+
+
           {/* ── Section: System Preferences ── */}
           <div className="space-y-3.5 pt-4 border-t border-border/10">
             <span className="text-[10px] tracking-wider uppercase font-bold text-muted-foreground px-1 block">
@@ -338,7 +392,7 @@ export default function ProfileSettings({
                   <h5 className="font-semibold text-xs text-foreground">{t.darkMode}</h5>
                   <p className="text-[9px] text-muted-foreground mt-0.5">{t.toggleThemeDesc}</p>
                 </div>
-                 <div className={`w-8 h-4.5 rounded-full p-0.5 transition duration-150 shrink-0 ${appTheme === 'dark' ? 'bg-brand' : 'bg-muted-foreground/40'}`}>
+                <div className={`w-8 h-4.5 rounded-full p-0.5 transition duration-150 shrink-0 ${appTheme === 'dark' ? 'bg-brand' : 'bg-muted-foreground/40'}`}>
                   <div className={`w-3.5 h-3.5 rounded-full bg-white transition duration-150 shadow-sm ${appTheme === 'dark' ? 'translate-x-3.5' : 'translate-x-0'}`} />
                 </div>
               </div>
@@ -352,7 +406,7 @@ export default function ProfileSettings({
                   <h5 className="font-semibold text-xs text-foreground">{t.readReceipts}</h5>
                   <p className="text-[9px] text-muted-foreground mt-0.5">{t.broadcastReceiptsDesc}</p>
                 </div>
-                 <div className={`w-8 h-4.5 rounded-full p-0.5 transition duration-150 shrink-0 ${settings.readReceipts ? 'bg-brand' : 'bg-muted-foreground/40'}`}>
+                <div className={`w-8 h-4.5 rounded-full p-0.5 transition duration-150 shrink-0 ${settings.readReceipts ? 'bg-brand' : 'bg-muted-foreground/40'}`}>
                   <div className={`w-3.5 h-3.5 rounded-full bg-white transition duration-150 shadow-sm ${settings.readReceipts ? 'translate-x-3.5' : 'translate-x-0'}`} />
                 </div>
               </div>
@@ -366,7 +420,7 @@ export default function ProfileSettings({
                   <h5 className="font-semibold text-xs text-foreground">{t.twoFactor}</h5>
                   <p className="text-[9px] text-muted-foreground mt-0.5">{t.twoFactorDesc}</p>
                 </div>
-                 <div className={`w-8 h-4.5 rounded-full p-0.5 transition duration-150 shrink-0 ${settings.twoFactor ? 'bg-brand' : 'bg-muted-foreground/40'}`}>
+                <div className={`w-8 h-4.5 rounded-full p-0.5 transition duration-150 shrink-0 ${settings.twoFactor ? 'bg-brand' : 'bg-muted-foreground/40'}`}>
                   <div className={`w-3.5 h-3.5 rounded-full bg-white transition duration-150 shadow-sm ${settings.twoFactor ? 'translate-x-3.5' : 'translate-x-0'}`} />
                 </div>
               </div>
@@ -385,7 +439,7 @@ export default function ProfileSettings({
                     localStorage.setItem('app_language', newLang);
                     handleFieldChange('language', newLang === 'en' ? 'English (United States)' : 'Tibetan');
                   }}
-                   className="bg-card border border-muted-foreground/20 rounded-md text-xs p-1 focus:ring-1 focus:ring-brand outline-none text-foreground shrink-0"
+                  className="bg-card border border-muted-foreground/20 rounded-md text-xs p-1 focus:ring-1 focus:ring-brand outline-none text-foreground shrink-0"
                 >
                   <option value="en">English</option>
                   <option value="bo">བོད་སྐད། (Tibetan)</option>
@@ -441,8 +495,7 @@ export default function ProfileSettings({
                       key={idx}
                       type="button"
                       onClick={() => {
-                        handleFieldChange('avatarUrl', avUrl);
-                        setIsPickerOpen(false);
+                        selectAvatar(avUrl);
                       }}
                       className={`aspect-square w-full rounded-full transition border active:scale-95 flex items-center justify-center relative bg-card overflow-hidden ${isSelected
                         ? 'border-brand bg-brand-light'

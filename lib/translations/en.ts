@@ -89,5 +89,24 @@ export const en = {
   supportCenter: "Support Center",
   logoutSession: "Log Out Session",
   language: "Language",
-  toggleLanguage: "Toggle Language (བོད་སྐད་ / English)"
+  toggleLanguage: "Toggle Language (བོད་སྐད་ / English)",
+  
+  // Chat Improvements
+  recording: "Recording...",
+  uploading: "Uploading...",
+  uploadFailed: "Failed to upload file.",
+  micPermissionDenied: "Microphone permission denied.",
+  voiceMessage: "Voice Message",
+  emojiSearch: "Search emoji...",
+  emojiSmileys: "Smileys",
+  emojiPeople: "People",
+  emojiAnimals: "Nature",
+  emojiFood: "Food",
+  emojiActivities: "Activities",
+  emojiTravel: "Travel",
+  emojiObjects: "Objects",
+  emojiSymbols: "Symbols",
+  emojiFlags: "Flags",
+  contactCard: "Contact Card",
+  messageUser: "Message"
 };

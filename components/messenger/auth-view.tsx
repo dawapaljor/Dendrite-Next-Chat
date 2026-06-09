@@ -22,7 +22,9 @@ export default function AuthView({ onAuthSuccess }: AuthViewProps) {
   useEffect(() => {
     const saved = localStorage.getItem('app_language');
     if (saved === 'en' || saved === 'bo') {
-      setLang(saved);
+      setTimeout(() => {
+        setLang(saved);
+      }, 0);
     }
   }, []);
 
