@@ -462,6 +462,10 @@ export default function ChatView({
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingDiscardedRef = useRef<boolean>(false);
   
+  useEffect(() => {
+    console.log("ChatView: FEATURE_FLAGS loaded ->", FEATURE_FLAGS);
+  }, []);
+  
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const mediaDropdownRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
