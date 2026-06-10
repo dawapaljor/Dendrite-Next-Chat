@@ -86,23 +86,20 @@ export default function DiscoverContacts({
         <div className="relative flex p-1 bg-muted/50 dark:bg-muted/30 rounded-xl w-full select-none border border-border/5">
           {/* Active Sliding Pill Indicator */}
           <div
-            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-brand rounded-lg shadow-md transition-all duration-300 ease-out ${
-              activeTab === 'one-to-one' ? 'left-1' : 'left-[50%]'
-            }`}
+            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-brand rounded-lg shadow-md transition-all duration-300 ease-out ${activeTab === 'one-to-one' ? 'left-1' : 'left-[50%]'
+              }`}
           />
           <button
             onClick={() => setActiveTab('one-to-one')}
-            className={`flex-1 text-center py-2 text-xs font-bold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer ${
-              activeTab === 'one-to-one' ? 'text-brand-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`flex-1 text-center py-2 text-xs font-bold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer ${activeTab === 'one-to-one' ? 'text-brand-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
           >
             {t.oneToOne}
           </button>
           <button
             onClick={() => setActiveTab('rooms')}
-            className={`flex-1 text-center py-2 text-xs font-bold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer ${
-              activeTab === 'rooms' ? 'text-brand-foreground' : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`flex-1 text-center py-2 text-xs font-bold rounded-lg relative z-10 transition-colors duration-200 cursor-pointer ${activeTab === 'rooms' ? 'text-brand-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
           >
             {t.rooms}
           </button>
@@ -210,7 +207,7 @@ export default function DiscoverContacts({
                   {filteredContacts.map((co) => (
                     <div
                       key={co.id}
-                      className="gap-3 px-4 py-3.5 flex items-center justify-between hover:border-slate-300 dark:hover:border-slate-800 hover:bg-muted/50 transition duration-150 border-b border-border/5"
+                      className="gap-3 px-4 py-2 flex items-center justify-between hover:bg-muted/50 transition duration-150 "
                     >
                       <div className="flex items-center gap-3">
                         <div className="relative shrink-0">
@@ -263,7 +260,7 @@ export default function DiscoverContacts({
                   {filteredRooms.map((room) => (
                     <div
                       key={room.id}
-                      className="gap-3 px-4 py-3.5 flex items-center justify-between hover:border-slate-300 dark:hover:border-slate-800 hover:bg-muted/50 transition duration-150 border-b border-border/5"
+                      className="gap-3 px-4 py-2 flex items-center justify-between hover:border-slate-300 dark:hover:border-slate-800 hover:bg-muted/50 transition duration-150 border-b border-border/5"
                     >
                       <div className="flex items-center gap-3">
                         <div className="relative shrink-0">

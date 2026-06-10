@@ -30,12 +30,8 @@ const nextConfig: NextConfig = {
   },
   output: 'standalone',
   transpilePackages: ['motion'],
+  serverExternalPackages: ['matrix-js-sdk'],
   webpack: (config, {dev}) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'matrix-js-sdk': require.resolve('matrix-js-sdk'),
-    };
-
     // HMR is disabled in AI Studio via DISABLE_HMR env var.
     // Do not modify—file watching is disabled to prevent flickering during agent edits.
     if (dev && process.env.DISABLE_HMR === 'true') {

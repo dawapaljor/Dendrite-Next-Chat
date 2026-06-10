@@ -102,24 +102,24 @@ export function CustomAudioPlayer({ src, lang }: CustomAudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  
+
   const barsCount = 20;
   const barHeights = [4, 6, 8, 5, 9, 11, 7, 5, 8, 12, 10, 6, 8, 5, 9, 7, 10, 8, 6, 4];
 
   useEffect(() => {
     const audio = new Audio(src);
     audioRef.current = audio;
-    
+
     const onLoadedMetadata = () => {
       if (audio.duration && audio.duration !== Infinity) {
         setDuration(audio.duration);
       }
     };
-    
+
     const onTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
     };
-    
+
     const onEnded = () => {
       setIsPlaying(false);
       setCurrentTime(0);
@@ -130,12 +130,12 @@ export function CustomAudioPlayer({ src, lang }: CustomAudioPlayerProps) {
         setDuration(audio.duration);
       }
     };
-    
+
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
     audio.addEventListener('timeupdate', onTimeUpdate);
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('durationchange', onDurationChange);
-    
+
     return () => {
       audio.pause();
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
@@ -186,9 +186,8 @@ export function CustomAudioPlayer({ src, lang }: CustomAudioPlayerProps) {
             return (
               <span
                 key={i}
-                className={`w-[3px] rounded-full transition duration-150 shrink-0 ${
-                  isLit ? 'bg-brand' : 'bg-muted-foreground/30'
-                }`}
+                className={`w-[3px] rounded-full transition duration-150 shrink-0 ${isLit ? 'bg-brand' : 'bg-muted-foreground/30'
+                  }`}
                 style={{ height: `${h * 1.8}px` }}
               />
             );
@@ -259,7 +258,7 @@ const isImageOrGifUrl = (urlStr: string): boolean => {
 
 const renderClickableText = (text: string, isMe: boolean, containsTibetan: boolean, members: Contact[] = []) => {
   const parts = text.split(URL_REGEX);
-  
+
   const parseMentions = (subtext: string) => {
     const MENTION_REGEX = /(@[^\s@]+)/g;
     const subparts = subtext.split(MENTION_REGEX);
@@ -271,11 +270,10 @@ const renderClickableText = (text: string, isMe: boolean, containsTibetan: boole
           return (
             <span
               key={idx}
-              className={`font-semibold rounded px-1 py-0.5 select-all ${
-                isMe
+              className={`font-semibold rounded px-1 py-0.5 select-all ${isMe
                   ? 'bg-white/20 text-white border border-white/10'
                   : 'bg-brand/10 text-brand border border-brand/5'
-              }`}
+                }`}
             >
               {subpart}
             </span>
@@ -296,9 +294,8 @@ const renderClickableText = (text: string, isMe: boolean, containsTibetan: boole
               href={part}
               target="_blank"
               rel="noopener noreferrer"
-              className={`underline break-all transition font-normal text-[11px] ${
-                isMe ? 'text-white hover:text-white/80' : 'text-brand hover:text-brand-hover'
-              }`}
+              className={`underline break-all transition font-normal text-[11px] ${isMe ? 'text-white hover:text-white/80' : 'text-brand hover:text-brand-hover'
+                }`}
               onClick={(e) => e.stopPropagation()}
             >
               {part}
@@ -554,11 +551,11 @@ export default function ChatView({
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingDiscardedRef = useRef<boolean>(false);
-  
+
   useEffect(() => {
     console.log("ChatView: FEATURE_FLAGS loaded ->", FEATURE_FLAGS);
   }, []);
-  
+
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const mediaDropdownRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -776,7 +773,7 @@ export default function ChatView({
   };
 
   // --- CHAT IMPROVEMENT HANDLERS ---
-  
+
   // Click outside to close pickers
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -799,15 +796,15 @@ export default function ChatView({
       onMsgTextChange(msgText + emoji);
       return;
     }
-    
+
     const start = inputEl.selectionStart ?? msgText.length;
     const end = inputEl.selectionEnd ?? msgText.length;
     const textBefore = msgText.substring(0, start);
     const textAfter = msgText.substring(end);
     const newText = textBefore + emoji + textAfter;
-    
+
     onMsgTextChange(newText);
-    
+
     setTimeout(() => {
       inputEl.focus();
       inputEl.setSelectionRange(start + emoji.length, start + emoji.length);
@@ -834,7 +831,7 @@ export default function ChatView({
       alert(translations[lang].fileTooLarge);
       return;
     }
-    
+
     setIsUploading(true);
     try {
       await onSendMediaMessage(file);
@@ -880,23 +877,23 @@ export default function ChatView({
         alert(translations[lang].micNotSupported);
         return;
       }
-      
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
-      
+
       recorder.ondataavailable = (e) => {
         if (e.data && e.data.size > 0) {
           audioChunksRef.current.push(e.data);
         }
       };
-      
+
       recorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        
+
         stream.getTracks().forEach(track => track.stop());
-        
+
         if (audioChunksRef.current.length === 0 || audioBlob.size < 200) {
           return;
         }
@@ -905,11 +902,11 @@ export default function ChatView({
           recordingDiscardedRef.current = false;
           return;
         }
-        
+
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const filename = `Voice_Message_${timestamp}.webm`;
         const audioFile = new File([audioBlob], filename, { type: 'audio/webm' });
-        
+
         if (onSendMediaMessage) {
           setIsUploading(true);
           try {
@@ -965,11 +962,11 @@ export default function ChatView({
     return (
       <div className="absolute top-1.5 right-1.5 opacity-0 group-hover/bubble:opacity-100 transition-opacity duration-150 z-20">
         <DropdownMenu>
-          <DropdownMenuTrigger>
+          <DropdownMenuTrigger render={
             <button className="p-0.5 rounded-full bg-black/25 hover:bg-black/45 text-white transition-colors duration-150 border-none cursor-pointer flex items-center justify-center shadow-xs">
               <ChevronDown className="w-3.5 h-3.5" />
             </button>
-          </DropdownMenuTrigger>
+          } />
           <DropdownMenuContent align={isMe ? "end" : "start"} className="min-w-[100px] text-[11px] py-1 bg-card border border-muted/50 rounded-lg shadow-md z-50">
             <DropdownMenuItem
               onClick={() => handleReply(msg)}
@@ -1065,16 +1062,16 @@ export default function ChatView({
               <span className={`text-[10px] block transition-all duration-300 ${isTyping ? 'text-brand font-medium' : 'text-muted-foreground'}`}>
                 {isTyping
                   ? <span className="flex items-center gap-1">
-                      <span className="inline-flex gap-0.5">
-                        <span className="w-1 h-1 rounded-full bg-brand animate-bounce [animation-delay:-0.3s] inline-block" />
-                        <span className="w-1 h-1 rounded-full bg-brand animate-bounce [animation-delay:-0.15s] inline-block" />
-                        <span className="w-1 h-1 rounded-full bg-brand animate-bounce inline-block" />
-                      </span>
-                      {translations[lang].typing}
+                    <span className="inline-flex gap-0.5">
+                      <span className="w-1 h-1 rounded-full bg-brand animate-bounce [animation-delay:-0.3s] inline-block" />
+                      <span className="w-1 h-1 rounded-full bg-brand animate-bounce [animation-delay:-0.15s] inline-block" />
+                      <span className="w-1 h-1 rounded-full bg-brand animate-bounce inline-block" />
                     </span>
+                    {translations[lang].typing}
+                  </span>
                   : activeChat.isGroup
-                  ? translations[lang].membersCount.replace('{count}', String(activeChat.members?.length || 0))
-                  : (activeChat.online === true ? translations[lang].online : translations[lang].offline)}
+                    ? translations[lang].membersCount.replace('{count}', String(activeChat.members?.length || 0))
+                    : (activeChat.online === true ? translations[lang].online : translations[lang].offline)}
               </span>
             </div>
           </div>
@@ -1422,7 +1419,7 @@ export default function ChatView({
                                   <img
                                     src={firstUrl}
                                     alt="GIF Preview"
-                                    className="w-full max-h-48 object-cover hover:scale-[1.01] transition duration-300"
+                                    className=""
                                     onClick={() => setLightboxImageUrl(firstUrl)}
                                   />
                                 </div>
@@ -1534,20 +1531,18 @@ export default function ChatView({
 
           {/* Reply / Edit Preview Banner */}
           {(replyTo || editingMessage) && (
-            <div className={`mb-2 flex items-start gap-2 px-3 py-2 rounded-xl border animate-in slide-in-from-bottom-2 fade-in duration-150 ${
-              editingMessage
+            <div className={`mb-2 flex items-start gap-2 px-3 py-2 rounded-xl border animate-in slide-in-from-bottom-2 fade-in duration-150 ${editingMessage
                 ? 'bg-amber-500/5 border-amber-500/20'
                 : 'bg-brand/5 border-brand/20'
-            }`}>
+              }`}>
               <div className="shrink-0 mt-0.5">
                 {editingMessage
                   ? <Edit2 className="w-3.5 h-3.5 text-amber-500" />
                   : <Reply className="w-3.5 h-3.5 text-brand" />}
               </div>
               <div className="flex-1 min-w-0">
-                <span className={`text-[9px] font-bold uppercase tracking-wider block mb-0.5 ${
-                  editingMessage ? 'text-amber-500' : 'text-brand'
-                }`}>
+                <span className={`text-[9px] font-bold uppercase tracking-wider block mb-0.5 ${editingMessage ? 'text-amber-500' : 'text-brand'
+                  }`}>
                   {editingMessage ? translations[lang].editingMessage : `${translations[lang].replyingTo} ${replyTo?.senderName || ''}`}
                 </span>
                 <span className="text-[11px] text-muted-foreground line-clamp-1">
@@ -1730,11 +1725,10 @@ export default function ChatView({
                 </div>
               </div>
             ) : (
-              <div className={`flex-1 rounded-xl px-3 py-1.5 flex items-center justify-between border transition duration-150 ${
-                editingMessage
+              <div className={`flex-1 rounded-xl px-3 py-1.5 flex items-center justify-between border transition duration-150 ${editingMessage
                   ? 'bg-amber-500/5 border-amber-500/30 focus-within:border-amber-500/50'
                   : 'bg-muted/60 dark:bg-muted/30 border-transparent focus-within:border-brand/40'
-              }`}>
+                }`}>
                 <input
                   ref={inputRef}
                   type="text"
@@ -1744,7 +1738,7 @@ export default function ChatView({
                   onKeyDown={handleKeyDown}
                   className={`flex-1 bg-transparent text-xs outline-none p-0.5 max-h-12 border-none focus:ring-0 text-foreground ${containsTibetan(msgText) ? 'font-tibetan' : ''}`}
                 />
-                
+
                 <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
                   {FEATURE_FLAGS.enableEmojiPicker && (
                     <button
@@ -1755,7 +1749,7 @@ export default function ChatView({
                       <Smile className="h-4.5 w-4.5" />
                     </button>
                   )}
-                  
+
                   {FEATURE_FLAGS.enableVoiceMessages && onSendMediaMessage && (
                     <button
                       onClick={startRecording}
@@ -1773,8 +1767,7 @@ export default function ChatView({
               <button
                 onClick={handleSendOrEdit}
                 disabled={!msgText.trim() || isSubmittingAction}
-                className={`p-2 rounded-full shrink-0 transition shadow-sm active:scale-95 border-none cursor-pointer ${
-                  editingMessage
+                className={`p-2 rounded-full shrink-0 transition shadow-sm active:scale-95 border-none cursor-pointer ${editingMessage
                     ? msgText.trim() ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-muted text-muted-foreground cursor-not-allowed'
                     : msgText.trim() ? 'bg-brand hover:bg-brand-hover text-brand-foreground' : 'bg-muted text-muted-foreground cursor-not-allowed'
                   }`}
@@ -2169,10 +2162,10 @@ export default function ChatView({
                 c.id !== activeChat.id &&
                 c.name.toLowerCase().includes(forwardSearchQuery.toLowerCase())
               ).length === 0 && (
-                <div className="py-8 text-center text-xs text-muted-foreground italic">
-                  {translations[lang].noConversations}
-                </div>
-              )}
+                  <div className="py-8 text-center text-xs text-muted-foreground italic">
+                    {translations[lang].noConversations}
+                  </div>
+                )}
             </div>
 
             {/* Footer */}
@@ -2222,7 +2215,7 @@ export default function ChatView({
       {/* Share Contact Card Modal */}
       {isContactCardModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in" onClick={() => setIsContactCardModalOpen(false)}>
-          <div 
+          <div
             className="bg-card border border-muted/50 rounded-2xl shadow-xl flex flex-col max-w-sm mx-auto w-full overflow-hidden animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2238,7 +2231,7 @@ export default function ChatView({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            
+
             {/* Modal Body */}
             <div className="p-4 space-y-3 bg-muted/5">
               <p className="text-[10.5px] text-muted-foreground leading-relaxed">
@@ -2269,7 +2262,7 @@ export default function ChatView({
                       )}
                     </div>
                   </div>
-                  
+
                   {/* Right-aligned toggles for Name and Role */}
                   <div className="flex flex-col gap-1 items-end justify-center shrink-0 border-l border-muted/10 pl-2">
                     <label className="flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground cursor-pointer select-none">

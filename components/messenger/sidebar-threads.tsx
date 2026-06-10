@@ -76,7 +76,7 @@ export default function SidebarThreads({
               <div
                 key={thread.id}
                 onClick={() => onSelectThread(thread.id)}
-                className={`flex items-center gap-3 px-4 py-3.5 transition cursor-pointer select-none border-b border-border/10 dark:border-border/5 last:border-b-0 ${isActive
+                className={`flex items-center gap-3 px-4 py-2 transition cursor-pointer select-none border-b border-border/10 dark:border-border/5 last:border-b-0 ${isActive
                   ? 'bg-brand-light/60 dark:bg-muted/50'
                   : 'hover:bg-muted/20'
                   }`}
