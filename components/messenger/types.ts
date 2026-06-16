@@ -30,6 +30,14 @@ export interface Message {
     senderName: string;
     text: string;
   };
+  ttl?: number;
+  expiresAt?: number;
+  reactions?: {
+    emoji: string;
+    count: number;
+    userReacted: boolean;
+    userReactionEventId?: string;
+  }[];
 }
 
 export interface ChatThread {
@@ -47,6 +55,7 @@ export interface ChatThread {
   topic?: string;
   members?: Contact[];
   isAdmin?: boolean;
+  isEncrypted?: boolean;
 }
 
 export interface Contact {

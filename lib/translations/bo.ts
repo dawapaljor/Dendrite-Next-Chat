@@ -209,5 +209,20 @@ export const bo = {
   edit: "བཟོ་བཅོས།",
   reply: "ལན།",
   forward: "བརྒྱུད་གཏོང་།",
-  edited: "བཟོས་པ།"
+  edited: "བཟོས་པ།",
+  
+  // Security & Ephemeral Messages
+  encryptedRoom: "གསང་བཟོས་གླེང་མོལ་ཁང་།",
+  unencryptedRoom: "གསང་བཟོས་མེད་པའི་མཐུད་ལམ།",
+  enableEncryption: "མཐའ་སྣེ་ནས་མཐའ་སྣེར་གསང་བཟོ་སྤྱོད་པ།",
+  encryptionStatus: "གསང་བཟོའི་གནས་བབ།",
+  ephemeralTimer: "རང་འཇིག་དུས་ཚོད།",
+  ephemeralTimerOff: "སྒོ་རྒྱག",
+  ephemeralTimer10s: "སྐར་ཆ་ ༡༠",
+  ephemeralTimer30s: "སྐར་ཆ་ ༣༠",
+  ephemeralTimer1m: "སྐར་མ་ ༡",
+  ephemeralTimer5m: "སྐར་མ་ ༥",
+  ephemeralTimer1h: "ཆུ་ཚོད་ ༡",
+  burnedMessage: "🔥 ཡིག་འཕྲིན་འདི་རང་འཇིག་ཟིན་འདུག",
+  remainingTime: "དུས་ཚོད་ {time} ལྷག་འདུག"
 };

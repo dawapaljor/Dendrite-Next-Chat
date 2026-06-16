@@ -21,6 +21,28 @@ A high-fidelity, modern collaborative chat client built with **Next.js 15**, **R
 
 ---
 
+## 🔮 Planned Future Features (Roadmap)
+
+Here are the brainstormed special features planned for future updates:
+
+*   **🛡️ Security & Trust Indicators (TibCERT & Privacy Focused)**:
+    *   **E2EE Status & Verification Shields**: Visual shield indicators in headers and bubbles representing room encryption status and device verification.
+    *   **Ephemeral Messages ("Burn-After-Reading")**: Self-destructing messages with animated timers that delete locally and via server-side redaction.
+*   **✨ Interactive Chat Enhancements**:
+    *   **Spring-Animated Reactions**: Emoji reaction popover using spring physics animations, mapping to Matrix annotation relation events.
+    *   **Typing Indicators & Read Receipts**: Real-time bouncing dot typing bubbles and double-checkmark read confirmation sync.
+    *   **Inline Threaded Replies**: Clean visual quotes linked to parent messages with click-to-scroll smooth transitions.
+    *   **Markdown & Syntax Highlight**: Support rich typography and highlighted code blocks inside chat messages.
+*   **👥 Collaborative Workspaces**:
+    *   **Native Polls**: Create, vote, and see live animated poll graphs inside chat feeds.
+    *   **Slash Command Palette**: Helper menu triggered by `/` to invoke commands like `/gif`, `/poll`, `/verify`, or `/shrug`.
+*   **🌐 Tibetan Localization Upgrades**:
+    *   **Voice Message Transcription**: Speech-to-text transcribing Tibetan audio clips directly inside the timeline.
+    *   **Inline Translation**: Hover options to translate between Tibetan and English.
+
+---
+
+
 ## 🛠️ Technical Stack
 
 *   **Framework**: [Next.js 15 (App Router)](https://nextjs.org/)

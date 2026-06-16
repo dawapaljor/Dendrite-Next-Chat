@@ -17,7 +17,7 @@ interface NewGroupViewProps {
   selectedGroupContacts: string[];
   onToggleContact: (id: string) => void;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (enableE2EE: boolean) => void;
   lang: Language;
 }
 
@@ -33,6 +33,7 @@ export default function NewGroupView({
   onConfirm,
   lang
 }: NewGroupViewProps) {
+  const [enableE2EE, setEnableE2EE] = React.useState(false);
   
   // Filter contacts by keyword
   const filtered = contacts.filter(co =>
@@ -132,9 +133,37 @@ export default function NewGroupView({
           </ScrollArea>
         </div>
  
+        {/* E2EE Toggle Switch */}
+        <div className="flex items-center justify-between p-3 bg-card border border-muted rounded-xl select-none">
+          <div className="flex items-center gap-2">
+            <span className={`p-1.5 rounded-lg ${enableE2EE ? 'bg-emerald-500/10 text-emerald-500' : 'bg-muted text-muted-foreground'}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><path d="M20 13c0 5-3.5 7.5-7.66 9.7a1 1 0 0 1-.68 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 .76-.97l8-2a1 1 0 0 1 .48 0l8 2A1 1 0 0 1 20 6z"/></svg>
+            </span>
+            <div className="leading-tight">
+              <span className="text-xs font-semibold block">{translations[lang].enableEncryption}</span>
+              <span className="text-[10px] text-muted-foreground">megolm.v1.aes-sha2</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enableE2EE}
+            onClick={() => setEnableE2EE(!enableE2EE)}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              enableE2EE ? 'bg-brand' : 'bg-muted-foreground/30'
+            }`}
+          >
+            <span
+              className={`pointer-events-none block h-4.5 w-4.5 rounded-full bg-background shadow-lg ring-0 transition-transform ${
+                enableE2EE ? 'translate-x-4' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        </div>
+
         {/* Action button */}
         <button
-          onClick={onConfirm}
+          onClick={() => onConfirm(enableE2EE)}
           disabled={selectedGroupContacts.length === 0}
           className={`w-full py-2.5 rounded-xl font-bold text-xs transition active:scale-[0.98] ${
             selectedGroupContacts.length > 0

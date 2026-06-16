@@ -16,4 +16,10 @@ export const FEATURE_FLAGS = {
 
   // Controls the Share Contact Card option in the Plus menu and the inline card renderer
   enableContactCardSharing: true,
+
+  // Controls encryption shield badges and trust highlights
+  enableSecurityTrustIndicators: true,
+
+  // Controls self-destructing/ephemeral timers and burning effects
+  enableEphemeralMessages: true,
 };

@@ -51,10 +51,10 @@ interface DesktopViewProps {
   setGroupSearch: (val: string) => void;
   selectedGroupContacts: string[];
   onToggleGroupContact: (id: string) => void;
-  onConfirmGroupCreation: () => void;
+  onConfirmGroupCreation: (enableE2EE?: boolean) => void;
   msgText: string;
   setMsgText: (txt: string) => void;
-  onSendMessage: () => void;
+  onSendMessage: (replyToId?: string, ttl?: number) => void;
   isTyping: boolean;
   onLogout?: () => void;
   connectionStatus?: string;
@@ -70,6 +70,7 @@ interface DesktopViewProps {
   onEditMessage?: (eventId: string, newText: string) => Promise<void>;
   onRecallMessage?: (eventId: string) => Promise<void>;
   onForwardMessage?: (targetRoomId: string, messageText: string, originalSender: string) => Promise<void>;
+  onSendReaction?: (messageId: string, emoji: string) => Promise<void> | void;
 }
 
 export default function DesktopView({
@@ -116,7 +117,8 @@ export default function DesktopView({
   onShareContactCard,
   onEditMessage,
   onRecallMessage,
-  onForwardMessage
+  onForwardMessage,
+  onSendReaction
 }: DesktopViewProps) {
   // Mode inside desktop screen to decide if we are showing Group creator
   const [isCreatingGroup, setIsCreatingGroup] = useState<boolean>(false);
@@ -220,8 +222,8 @@ export default function DesktopView({
                 selectedGroupContacts={selectedGroupContacts}
                 onToggleContact={onToggleGroupContact}
                 onClose={() => setIsCreatingGroup(false)}
-                onConfirm={() => {
-                  onConfirmGroupCreation();
+                onConfirm={(enableE2EE?: boolean) => {
+                  onConfirmGroupCreation(enableE2EE);
                   setIsCreatingGroup(false);
                   setIsMobileChatActive(true);
                 }}
@@ -348,6 +350,7 @@ export default function DesktopView({
               onEditMessage={onEditMessage}
               onRecallMessage={onRecallMessage}
               onForwardMessage={onForwardMessage}
+              onSendReaction={onSendReaction}
             />
           ) : (
             /* Blank overview guidelines screen when nothing active */

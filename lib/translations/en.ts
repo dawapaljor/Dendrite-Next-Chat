@@ -209,5 +209,20 @@ export const en = {
   edit: "Edit",
   reply: "Reply",
   forward: "Forward",
-  edited: "edited"
+  edited: "edited",
+  
+  // Security & Ephemeral Messages
+  encryptedRoom: "Encrypted Room",
+  unencryptedRoom: "Unencrypted Connection",
+  enableEncryption: "Enable End-to-End Encryption",
+  encryptionStatus: "Encryption Status",
+  ephemeralTimer: "Self-Destruct Timer",
+  ephemeralTimerOff: "Off",
+  ephemeralTimer10s: "10 seconds",
+  ephemeralTimer30s: "30 seconds",
+  ephemeralTimer1m: "1 minute",
+  ephemeralTimer5m: "5 minutes",
+  ephemeralTimer1h: "1 hour",
+  burnedMessage: "🔥 This message has burned",
+  remainingTime: "{time} left"
 };

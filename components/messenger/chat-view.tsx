@@ -256,55 +256,134 @@ const isImageOrGifUrl = (urlStr: string): boolean => {
   }
 };
 
-const renderClickableText = (text: string, isMe: boolean, containsTibetan: boolean, members: Contact[] = []) => {
+const parseInlineStyles = (text: string, isMe: boolean) => {
+  const TOKEN_REGEX = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  const parts = text.split(TOKEN_REGEX);
+
+  return parts.map((part, idx) => {
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code
+          key={idx}
+          className={`px-1.5 py-0.5 rounded font-mono text-[10px] ${
+            isMe 
+              ? 'bg-white/20 text-rose-200 border border-white/10' 
+              : 'bg-muted border border-muted-foreground/10 text-rose-600 dark:text-rose-400'
+          }`}
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={idx} className="font-bold">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={idx} className="italic">{part.slice(1, -1)}</em>;
+    }
+    return part;
+  });
+};
+
+const parseTextFormatting = (text: string, isMe: boolean, containsTibetan: boolean, members: Contact[] = []) => {
+  const MENTION_REGEX = /(@[^\s@]+)/g;
+  const parts = text.split(MENTION_REGEX);
+
+  return parts.map((part, idx) => {
+    if (part.match(MENTION_REGEX)) {
+      const nameWithoutAt = part.substring(1);
+      const isMember = members.some(m => m.name === nameWithoutAt || m.id === part);
+      if (isMember) {
+        return (
+          <span
+            key={idx}
+            className={`font-semibold rounded px-1 py-0.5 select-all ${isMe
+              ? 'bg-white/20 text-white border border-white/10'
+              : 'bg-brand/10 text-brand border border-brand/5'}`}
+          >
+            {part}
+          </span>
+        );
+      }
+    }
+    return <React.Fragment key={idx}>{parseInlineStyles(part, isMe)}</React.Fragment>;
+  });
+};
+
+const renderInlineMarkdown = (text: string, isMe: boolean, containsTibetan: boolean, members: Contact[] = []) => {
   const parts = text.split(URL_REGEX);
 
-  const parseMentions = (subtext: string) => {
-    const MENTION_REGEX = /(@[^\s@]+)/g;
-    const subparts = subtext.split(MENTION_REGEX);
-    return subparts.map((subpart, idx) => {
-      if (subpart.match(MENTION_REGEX)) {
-        const nameWithoutAt = subpart.substring(1);
-        const isMember = members.some(m => m.name === nameWithoutAt || m.id === subpart);
-        if (isMember) {
-          return (
-            <span
-              key={idx}
-              className={`font-semibold rounded px-1 py-0.5 select-all ${isMe
-                  ? 'bg-white/20 text-white border border-white/10'
-                  : 'bg-brand/10 text-brand border border-brand/5'
-                }`}
-            >
-              {subpart}
-            </span>
-          );
-        }
-      }
-      return subpart;
-    });
-  };
+  return parts.map((part, i) => {
+    if (part.match(URL_REGEX)) {
+      return (
+        <a
+          key={i}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`underline break-all transition font-normal text-[11px] ${isMe ? 'text-white hover:text-white/80' : 'text-brand hover:text-brand-hover'}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return <React.Fragment key={i}>{parseTextFormatting(part, isMe, containsTibetan, members)}</React.Fragment>;
+  });
+};
+
+const renderMarkdownText = (text: string, isMe: boolean, containsTibetan: boolean, members: Contact[] = []) => {
+  const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    const startIndex = match.index;
+    if (startIndex > lastIndex) {
+      parts.push({ type: 'text', content: text.substring(lastIndex, startIndex) });
+    }
+    parts.push({ type: 'codeblock', lang: match[1], content: match[2] });
+    lastIndex = codeBlockRegex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', content: text.substring(lastIndex) });
+  }
 
   return (
-    <p className={`whitespace-pre-line leading-relaxed ${containsTibetan ? 'font-tibetan' : ''}`}>
-      {parts.map((part, i) => {
-        if (part.match(URL_REGEX)) {
+    <div className={`whitespace-pre-line leading-relaxed ${containsTibetan ? 'font-tibetan' : ''} space-y-1.5`}>
+      {parts.map((part, index) => {
+        if (part.type === 'codeblock') {
           return (
-            <a
-              key={i}
-              href={part}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`underline break-all transition font-normal text-[11px] ${isMe ? 'text-white hover:text-white/80' : 'text-brand hover:text-brand-hover'
-                }`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {part}
-            </a>
+            <div key={index} className="my-1.5 rounded-lg overflow-hidden border border-muted/50 bg-[#0f172a] text-slate-100 font-mono text-[10px] w-full max-w-full">
+              <div className="flex items-center justify-between px-3 py-1 bg-slate-900 border-b border-slate-800 text-slate-400 select-none">
+                <span className="text-[9px] uppercase font-bold tracking-wider">{part.lang || 'code'}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(part.content);
+                  }}
+                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition flex items-center justify-center border-none bg-transparent cursor-pointer"
+                  title="Copy code"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <pre className="p-3 overflow-x-auto leading-relaxed select-text">
+                <code>{part.content.trim()}</code>
+              </pre>
+            </div>
           );
         }
-        return <React.Fragment key={i}>{parseMentions(part)}</React.Fragment>;
+
+        return (
+          <span key={index} className="inline-block w-full">
+            {renderInlineMarkdown(part.content, isMe, containsTibetan, members)}
+          </span>
+        );
       })}
-    </p>
+    </div>
   );
 };
 
@@ -419,11 +498,61 @@ export function LinkPreviewCard({ url }: LinkPreviewCardProps) {
   );
 }
 
+interface EphemeralMessageCountdownProps {
+  messageId: string;
+  expiresAt: number;
+  isMe: boolean;
+  onExpired: () => void;
+  lang: string;
+}
+
+function EphemeralMessageCountdown({ messageId, expiresAt, isMe, onExpired, lang }: EphemeralMessageCountdownProps) {
+  const [timeLeft, setTimeLeft] = useState<number>(() => Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000)));
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onExpired();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(timer);
+        onExpired();
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [expiresAt, timeLeft, onExpired]);
+
+  if (timeLeft <= 0) return null;
+
+  const formatTimeLeft = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}m ${secs}s`;
+  };
+
+  return (
+    <div className={`flex items-center gap-1 text-[8px] font-mono select-none px-1 py-0.5 rounded mt-1 border shrink-0 ${
+      isMe 
+        ? 'text-rose-200/90 border-white/10 bg-white/10' 
+        : 'text-rose-500 border-rose-500/10 bg-rose-500/5'
+    }`}>
+      <span className="animate-pulse">🔥</span>
+      <span>{translations[lang].remainingTime.replace('{time}', formatTimeLeft(timeLeft))}</span>
+    </div>
+  );
+}
+
 interface ChatViewProps {
   activeChat: ChatThread;
   msgText: string;
   onMsgTextChange: (val: string) => void;
-  onSendMessage: (replyToId?: string) => void;
+  onSendMessage: (replyToId?: string, ttl?: number) => void;
   isTyping: boolean;
   onBackClick?: () => void; // only needed on mobile layout
   lang: Language;
@@ -440,6 +569,7 @@ interface ChatViewProps {
   onEditMessage?: (eventId: string, newText: string) => Promise<void>;
   onRecallMessage?: (eventId: string) => Promise<void>;
   onForwardMessage?: (targetRoomId: string, messageText: string, originalSender: string) => Promise<void>;
+  onSendReaction?: (messageId: string, emoji: string) => Promise<void> | void;
 }
 
 export default function ChatView({
@@ -462,7 +592,8 @@ export default function ChatView({
   chats,
   onEditMessage,
   onRecallMessage,
-  onForwardMessage
+  onForwardMessage,
+  onSendReaction
 }: ChatViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showRoomDetails, setShowRoomDetails] = useState<boolean>(false);
@@ -489,6 +620,31 @@ export default function ChatView({
   const [forwardSearchQuery, setForwardSearchQuery] = useState('');
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+
+  // --- E2EE & EPHEMERAL STATES ---
+  const [ephemeralTtl, setEphemeralTtl] = useState<number>(0);
+  const [burnedMessageIds, setBurnedMessageIds] = useState<Record<string, boolean>>({});
+
+  // --- POLISH & INTERACTION STATES ---
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+
+  const handleScrollToMessage = useCallback((msgId: string) => {
+    const element = document.getElementById(`msg-${msgId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMessageId(msgId);
+      setTimeout(() => {
+        setHighlightedMessageId(null);
+      }, 2000);
+    }
+  }, []);
+
+  const handleExpired = useCallback((msgId: string, isMe: boolean) => {
+    setBurnedMessageIds(prev => ({ ...prev, [msgId]: true }));
+    if (isMe && onRecallMessage) {
+      onRecallMessage(msgId);
+    }
+  }, [onRecallMessage]);
 
   // Mention autocomplete
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
@@ -714,7 +870,7 @@ export default function ChatView({
         setIsSubmittingAction(false);
       }
     } else {
-      onSendMessage(replyTo?.id);
+      onSendMessage(replyTo?.id, ephemeralTtl);
       setReplyTo(null);
     }
   };
@@ -1008,6 +1164,72 @@ export default function ChatView({
     );
   };
 
+  const renderFloatingReactions = (msg: Message, isMe: boolean) => {
+    if (!onSendReaction || !msg.id) return null;
+    const popularEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+    
+    return (
+      <div className={`absolute -top-7 ${isMe ? 'left-2' : 'right-2'} opacity-0 group-hover/bubble:opacity-100 transition-all duration-200 z-30 flex items-center gap-1 bg-card border border-muted/80 px-2 py-0.5 rounded-full shadow-md scale-90 group-hover/bubble:scale-100`}>
+        {popularEmojis.map((emoji) => {
+          const userReaction = msg.reactions?.find(r => r.emoji === emoji);
+          const hasReacted = !!userReaction?.userReacted;
+          const reactionEventId = userReaction?.userReactionEventId;
+
+          return (
+            <button
+              key={emoji}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (hasReacted && reactionEventId && onRecallMessage) {
+                  onRecallMessage(reactionEventId);
+                } else {
+                  onSendReaction(msg.id!, emoji);
+                }
+              }}
+              className={`hover:scale-125 hover:rotate-3 transition duration-150 p-0.5 text-xs bg-transparent border-none cursor-pointer filter hover:brightness-110 active:scale-95 ${
+                hasReacted ? 'scale-110 bg-brand/10 rounded-full' : ''
+              }`}
+            >
+              {emoji}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderReactionCapsules = (msg: Message) => {
+    if (!msg.reactions || msg.reactions.length === 0) return null;
+
+    return (
+      <div className="flex flex-wrap gap-1 mt-1 select-none">
+        {msg.reactions.map((reaction) => {
+          return (
+            <button
+              key={reaction.emoji}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (reaction.userReacted && reaction.userReactionEventId && onRecallMessage) {
+                  onRecallMessage(reaction.userReactionEventId);
+                } else if (onSendReaction && msg.id) {
+                  onSendReaction(msg.id, reaction.emoji);
+                }
+              }}
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] transition duration-200 cursor-pointer active:scale-95 ${
+                reaction.userReacted
+                  ? 'bg-brand/10 border-brand/30 text-brand font-semibold shadow-2xs'
+                  : 'bg-muted/40 border-muted text-muted-foreground hover:bg-muted/70 hover:border-muted-foreground/20'
+              }`}
+            >
+              <span>{reaction.emoji}</span>
+              <span className="text-[9px] font-mono">{reaction.count}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="flex h-full w-full bg-card text-card-foreground overflow-hidden">
       {/* Main Conversation Stream */}
@@ -1053,11 +1275,16 @@ export default function ChatView({
             </div>
 
             <div className="min-w-0 leading-tight">
-              <h4 className="font-bold text-xs truncate text-foreground flex items-center gap-1">
+              <h4 className="font-bold text-xs truncate text-foreground flex items-center gap-1.5">
                 {activeChat.isGroup ? (
                   <Hash className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
                 ) : null}
                 <span className="truncate">{activeChat.name}</span>
+                {FEATURE_FLAGS.enableSecurityTrustIndicators && activeChat.isEncrypted && (
+                  <span className="text-emerald-500 shrink-0 select-none cursor-help" title={translations[lang].encryptedRoom}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  </span>
+                )}
               </h4>
               <span className={`text-[10px] block transition-all duration-300 ${isTyping ? 'text-brand font-medium' : 'text-muted-foreground'}`}>
                 {isTyping
@@ -1091,7 +1318,7 @@ export default function ChatView({
         </div>
 
         {/* Messages Stream area with custom scroll */}
-        <div className="flex-1 w-full bg-muted/10 overflow-y-auto">
+        <div className="flex-1 w-full bg-muted/10 overflow-y-auto overflow-x-hidden">
           <div className="px-4 py-4 space-y-3">
             <div className="text-center my-2">
               <span className="text-[9px] tracking-wide bg-muted text-muted-foreground py-0.5 px-2.5 rounded-full font-semibold uppercase">
@@ -1102,16 +1329,51 @@ export default function ChatView({
             {activeChat.messages.map((m, idx) => {
               const isMe = m.sender === 'me';
               const msgKey = m.id || String(idx);
+              const isBurned = m.expiresAt ? (Date.now() > m.expiresAt || burnedMessageIds[m.id]) : false;
 
               // Get initials for fallback
               const initials = m.senderName
                 ? m.senderName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
                 : 'U';
 
+              // Burned message display
+              if (isBurned) {
+                return (
+                  <div 
+                    key={msgKey} 
+                    id={m.id ? `msg-${m.id}` : undefined}
+                    className={`flex items-end gap-2.5 w-full p-1 rounded-2xl transition-all duration-500 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${
+                      highlightedMessageId === m.id ? 'ring-2 ring-brand/60 bg-brand/5 dark:bg-brand/10 scale-[1.01]' : ''
+                    }`}
+                  >
+                    <Avatar className="h-8 w-8 border border-muted-foreground/10 shrink-0 rounded-full opacity-40">
+                      {m.senderAvatar ? <AvatarImage src={m.senderAvatar} alt={m.senderName || 'User'} className="object-cover rounded-full" /> : null}
+                      <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-bold rounded-full">{initials}</AvatarFallback>
+                    </Avatar>
+                    <div className={`flex flex-col max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
+                      <div className={`px-3 py-1.5 rounded-xl text-[10px] italic border border-dashed select-none flex items-center gap-1.5 ${
+                        isMe 
+                          ? 'border-white/20 bg-white/5 text-white/40' 
+                          : 'border-muted-foreground/20 bg-muted/10 text-muted-foreground/50'
+                      }`}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3 shrink-0"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+                        <span>{translations[lang].burnedMessage}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               // Recalled message display
               if (m.isRecalled) {
                 return (
-                  <div key={msgKey} className={`flex items-end gap-2.5 w-full ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div 
+                    key={msgKey} 
+                    id={m.id ? `msg-${m.id}` : undefined}
+                    className={`flex items-end gap-2.5 w-full p-1 rounded-2xl transition-all duration-500 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${
+                      highlightedMessageId === m.id ? 'ring-2 ring-brand/60 bg-brand/5 dark:bg-brand/10 scale-[1.01]' : ''
+                    }`}
+                  >
                     <Avatar className="h-8 w-8 border border-muted-foreground/10 shrink-0 rounded-full opacity-40">
                       {m.senderAvatar ? <AvatarImage src={m.senderAvatar} alt={m.senderName || 'User'} className="object-cover rounded-full" /> : null}
                       <AvatarFallback className="bg-muted text-muted-foreground text-[10px] font-bold rounded-full">{initials}</AvatarFallback>
@@ -1129,7 +1391,10 @@ export default function ChatView({
               return (
                 <div
                   key={msgKey}
-                  className={`flex items-end gap-2.5 w-full ${isMe ? 'flex-row-reverse' : 'flex-row'}`}
+                  id={m.id ? `msg-${m.id}` : undefined}
+                  className={`flex items-end gap-2.5 w-full p-1 rounded-2xl transition-all duration-500 ${isMe ? 'flex-row-reverse' : 'flex-row'} ${
+                    highlightedMessageId === m.id ? 'ring-2 ring-brand/60 bg-brand/5 dark:bg-brand/10 scale-[1.01]' : ''
+                  }`}
                 >
                   {/* Sender Avatar */}
                   <Avatar className="h-8 w-8 border border-muted-foreground/10 shrink-0 rounded-full">
@@ -1142,10 +1407,10 @@ export default function ChatView({
                   </Avatar>
 
                   {/* Name and Bubble Container */}
-                  <div className={`flex flex-col max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
+                  <div className={`flex flex-col max-w-[70%] min-w-0 ${isMe ? 'items-end' : 'items-start'}`}>
                     {/* Chat Bubble */}
                     {m.isImage ? (
-                      m.fileUrl ? (
+                      m.fileUrl ? (<>
                         <div className="w-full max-w-[280px] rounded-2xl overflow-hidden shadow-md border border-muted bg-[#0f172a]/20 cursor-pointer hover:border-brand/40 transition duration-300 relative group/bubble">
                           <img
                             src={m.fileUrl}
@@ -1161,8 +1426,10 @@ export default function ChatView({
                             </div>
                           </div>
                           {renderMessageDropdown(m, isMe)}
+                          {renderFloatingReactions(m, isMe)}
                         </div>
-                      ) : (
+                        {renderReactionCapsules(m)}
+                      </>) : (<>
                         <div className="w-full max-w-[280px] rounded-2xl overflow-hidden shadow-md border hover:border-brand/40 transition duration-300 border-muted relative group/bubble">
                           <div className="bg-[#0f172a] p-3 text-white">
                             {m.senderName && !isMe && (
@@ -1213,9 +1480,11 @@ export default function ChatView({
                             </div>
                           </div>
                           {renderMessageDropdown(m, isMe)}
+                          {renderFloatingReactions(m, isMe)}
                         </div>
-                      )
-                    ) : m.isFile ? (
+                        {renderReactionCapsules(m)}
+                      </>)
+                    ) : m.isFile ? (<>
                       <div className="flex items-center gap-3 p-3 bg-muted/40 hover:bg-muted/60 border border-muted/20 rounded-xl w-64 md:w-72 transition duration-200 relative group/bubble">
                         <div className="w-9 h-9 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
                           <FileText className="w-5 h-5" />
@@ -1242,8 +1511,10 @@ export default function ChatView({
                           </a>
                         )}
                         {renderMessageDropdown(m, isMe)}
+                        {renderFloatingReactions(m, isMe)}
                       </div>
-                    ) : m.isContactCard && FEATURE_FLAGS.enableContactCardSharing ? (
+                      {renderReactionCapsules(m)}
+                    </>) : m.isContactCard && FEATURE_FLAGS.enableContactCardSharing ? (<>
                       <div className="w-64 md:w-72 bg-card border border-muted/30 rounded-2xl overflow-hidden shadow-md flex flex-col hover:border-brand/40 transition duration-300 relative group/bubble">
                         {/* Card Header with gradient background */}
                         <div className="bg-linear-to-r from-brand/15 to-purple-500/5 p-3 flex items-center gap-3 border-b border-muted/15">
@@ -1361,17 +1632,21 @@ export default function ChatView({
                           </div>
                         </div>
                         {renderMessageDropdown(m, isMe)}
+                        {renderFloatingReactions(m, isMe)}
                       </div>
-                    ) : m.isAudio ? (
-                      m.fileUrl ? (
+                      {renderReactionCapsules(m)}
+                    </>) : m.isAudio ? (
+                      m.fileUrl ? (<>
                         <div className="relative group/bubble">
                           <CustomAudioPlayer src={m.fileUrl} lang={lang} />
                           {renderMessageDropdown(m, isMe)}
+                          {renderFloatingReactions(m, isMe)}
                         </div>
-                      ) : null
-                    ) : (
+                        {renderReactionCapsules(m)}
+                      </>) : null
+                    ) : (<>
                       <div
-                        className={`px-2 py-2 rounded-xl text-xs leading-relaxed shadow-xs transition duration-200 flex flex-col relative group/bubble ${isMe
+                        className={`px-2 py-2 rounded-xl text-xs leading-relaxed shadow-xs transition duration-200 flex flex-col relative group/bubble w-full min-w-0 ${isMe
                           ? 'bg-brand text-brand-foreground rounded-br-none'
                           : 'bg-muted text-foreground rounded-bl-none'
                           }`}
@@ -1386,7 +1661,16 @@ export default function ChatView({
 
                         {/* Reply context preview */}
                         {m.replyTo && (
-                          <div className={`mb-1.5 pl-2 border-l-2 py-0.5 rounded-sm ${isMe ? 'border-white/40 bg-white/10' : 'border-brand/50 bg-brand/5'}`}>
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (m.replyTo?.id) {
+                                handleScrollToMessage(m.replyTo.id);
+                              }
+                            }}
+                            className={`mb-1.5 pl-2 border-l-2 py-0.5 rounded-sm cursor-pointer hover:bg-black/10 dark:hover:bg-white/10 transition-colors duration-150 select-none ${isMe ? 'border-white/40 bg-white/10' : 'border-brand/50 bg-brand/5'}`}
+                            title="Go to parent message"
+                          >
                             <span className={`text-[9px] font-bold block ${isMe ? 'text-white/70' : 'text-brand'}`}>
                               {m.replyTo.senderName}
                             </span>
@@ -1411,7 +1695,7 @@ export default function ChatView({
 
                           return (
                             <>
-                              {renderClickableText(m.text, isMe, containsTibetan(m.text), activeChat.members)}
+                              {renderMarkdownText(m.text, isMe, containsTibetan(m.text), activeChat.members)}
 
                               {/* Image/GIF URL Preview */}
                               {hasImagePreview && (
@@ -1434,16 +1718,29 @@ export default function ChatView({
                         })()}
 
                         {/* Time & status + edited badge */}
-                        <div className={`flex items-center justify-end gap-1 mt-0.5 text-[8px] select-none ${isMe ? 'text-white/70' : 'text-muted-foreground/40'}`}>
-                          {m.isEdited && (
-                            <span className="italic">{translations[lang].edited}</span>
+                        <div className="flex flex-col items-end mt-0.5 shrink-0">
+                          <div className={`flex items-center justify-end gap-1 text-[8px] select-none ${isMe ? 'text-white/70' : 'text-muted-foreground/40'}`}>
+                            {m.isEdited && (
+                              <span className="italic mr-1">{translations[lang].edited}</span>
+                            )}
+                            <span>{m.time}</span>
+                            {isMe && <CheckCheck className="h-3 w-3 text-white" />}
+                          </div>
+                          {m.expiresAt && !isBurned && (
+                            <EphemeralMessageCountdown
+                              messageId={m.id}
+                              expiresAt={m.expiresAt}
+                              isMe={isMe}
+                              onExpired={() => handleExpired(m.id, isMe)}
+                              lang={lang}
+                            />
                           )}
-                          <span>{m.time}</span>
-                          {isMe && <CheckCheck className="h-3 w-3 text-white" />}
                         </div>
                         {renderMessageDropdown(m, isMe)}
+                        {renderFloatingReactions(m, isMe)}
                       </div>
-                    )}
+                      {renderReactionCapsules(m)}
+                    </>)}
                   </div>
                 </div>
               );
@@ -1732,7 +2029,15 @@ export default function ChatView({
                 <input
                   ref={inputRef}
                   type="text"
-                  placeholder={editingMessage ? translations[lang].editingMessage + '...' : (replyTo ? `${translations[lang].replyingTo} ${replyTo.senderName}...` : translations[lang].typeMessage)}
+                  placeholder={
+                    editingMessage 
+                      ? translations[lang].editingMessage + '...' 
+                      : ephemeralTtl > 0 
+                        ? `🔥 [Self-destruct: ${ephemeralTtl}s active] ${translations[lang].typeMessage}...`
+                        : replyTo 
+                          ? `${translations[lang].replyingTo} ${replyTo.senderName}...` 
+                          : translations[lang].typeMessage
+                  }
                   value={msgText}
                   onChange={(e) => onMsgTextChange(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -1748,6 +2053,45 @@ export default function ChatView({
                     >
                       <Smile className="h-4.5 w-4.5" />
                     </button>
+                  )}
+
+                  {FEATURE_FLAGS.enableEphemeralMessages && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger render={
+                        <button
+                          className={`text-muted-foreground hover:text-foreground transition p-0.5 cursor-pointer border-none bg-transparent relative ${ephemeralTtl > 0 ? 'text-rose-500 hover:text-rose-600' : ''}`}
+                          title={translations[lang].ephemeralTimer}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          {ephemeralTtl > 0 && (
+                            <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500"></span>
+                            </span>
+                          )}
+                        </button>
+                      } />
+                      <DropdownMenuContent align="end" className="w-32 bg-card border border-muted z-50 p-1 rounded-xl shadow-lg">
+                        <DropdownMenuItem onClick={() => setEphemeralTtl(0)} className={`text-[10px] p-1.5 cursor-pointer rounded-lg ${ephemeralTtl === 0 ? 'text-brand font-semibold' : ''}`}>
+                          {translations[lang].ephemeralTimerOff}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setEphemeralTtl(10)} className={`text-[10px] p-1.5 cursor-pointer rounded-lg ${ephemeralTtl === 10 ? 'text-brand font-semibold' : ''}`}>
+                          10s
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setEphemeralTtl(30)} className={`text-[10px] p-1.5 cursor-pointer rounded-lg ${ephemeralTtl === 30 ? 'text-brand font-semibold' : ''}`}>
+                          30s
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setEphemeralTtl(60)} className={`text-[10px] p-1.5 cursor-pointer rounded-lg ${ephemeralTtl === 60 ? 'text-brand font-semibold' : ''}`}>
+                          1m
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setEphemeralTtl(300)} className={`text-[10px] p-1.5 cursor-pointer rounded-lg ${ephemeralTtl === 300 ? 'text-brand font-semibold' : ''}`}>
+                          5m
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setEphemeralTtl(3600)} className={`text-[10px] p-1.5 cursor-pointer rounded-lg ${ephemeralTtl === 3600 ? 'text-brand font-semibold' : ''}`}>
+                          1h
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
 
                   {FEATURE_FLAGS.enableVoiceMessages && onSendMediaMessage && (

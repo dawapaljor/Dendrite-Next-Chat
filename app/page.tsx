@@ -195,6 +195,31 @@ export default function Home() {
           displayName = displayName.split(':')[0].substring(1);
         }
         const timeline = room.getLiveTimeline().getEvents();
+
+        // Aggregate reactions from the timeline
+        const reactionsMap: Record<string, Record<string, { sender: string; eventId: string }[]>> = {};
+        timeline.forEach(ev => {
+          if (ev.getType() === "m.reaction") {
+            const content = ev.getContent();
+            const relatesTo = content["m.relates_to"];
+            if (relatesTo && relatesTo.rel_type === "m.annotation" && relatesTo.event_id && relatesTo.key) {
+              const targetId = relatesTo.event_id;
+              const emoji = relatesTo.key;
+              const sender = ev.getSender() || "";
+              const eventId = ev.getId() || "";
+
+              if (!reactionsMap[targetId]) {
+                reactionsMap[targetId] = {};
+              }
+              if (!reactionsMap[targetId][emoji]) {
+                reactionsMap[targetId][emoji] = [];
+              }
+              if (!reactionsMap[targetId][emoji].some(r => r.sender === sender)) {
+                reactionsMap[targetId][emoji].push({ sender, eventId });
+              }
+            }
+          }
+        });
         
         const mappedMessages = timeline
           .filter(event => event.getType() === "m.room.message" || event.isRedacted())
@@ -247,6 +272,17 @@ export default function Home() {
               bodyText = isMe ? translations[lang].recalledMessageMe : translations[lang].recalledMessagePartner;
             }
 
+            const ttl = content["org.workspace.ttl"];
+            const expiresAt = ttl ? event.getTs() + (ttl * 1000) : undefined;
+
+            const reactions = reactionsMap[event.getId() || ""] || {};
+            const mappedReactions = Object.entries(reactions).map(([emoji, items]) => ({
+              emoji,
+              count: items.length,
+              userReacted: items.some(item => item.sender === (matrixClient.getUserId() || "")),
+              userReactionEventId: items.find(item => item.sender === (matrixClient.getUserId() || ""))?.eventId
+            }));
+
             return {
               id: event.getId() || '',
               sender: isMe ? 'me' : 'receiver',
@@ -266,7 +302,10 @@ export default function Home() {
               isRecalled: isRedacted,
               isForwarded: !!forwardData,
               forwardedFrom: forwardData?.sender_name,
-              replyTo: replyToData
+              replyTo: replyToData,
+              ttl,
+              expiresAt,
+              reactions: mappedReactions
             };
           });
 
@@ -339,6 +378,14 @@ export default function Home() {
           }
         }
 
+        let isEncrypted = false;
+        try {
+          isEncrypted = matrixClient.isRoomEncrypted(room.roomId);
+        } catch (_) {
+          const stateEvent = room.currentState.getStateEvents("m.room.encryption", "");
+          isEncrypted = !!stateEvent;
+        }
+
         return {
           id: room.roomId,
           name: displayName,
@@ -352,7 +399,8 @@ export default function Home() {
           messages: mappedMessages,
           topic: topic,
           members: mappedMembers,
-          isAdmin: isAdmin
+          isAdmin: isAdmin,
+          isEncrypted: isEncrypted
         };
       });
 
@@ -755,7 +803,7 @@ export default function Home() {
   };
 
   // Send message action
-  const handleSendMessage = async (replyToId?: string) => {
+  const handleSendMessage = async (replyToId?: string, ttl?: number) => {
     if (!msgText.trim() || !activeChatId || !matrixClient) return;
 
     const textToSend = msgText.trim();
@@ -767,6 +815,11 @@ export default function Home() {
         msgtype: "m.text" as any,
         body: textToSend
       };
+
+      if (ttl && ttl > 0) {
+        content["org.workspace.ttl"] = ttl;
+        content["org.workspace.ephemeral"] = true;
+      }
 
       if (replyToId) {
         content["m.relates_to"] = {
@@ -908,6 +961,26 @@ export default function Home() {
     }
   };
 
+  // Send message reaction action
+  const handleSendReaction = async (messageId: string, emoji: string) => {
+    if (!activeChatId || !matrixClient) return;
+
+    try {
+      await matrixClient.sendEvent(activeChatId, "m.reaction" as any, {
+        "m.relates_to": {
+          "rel_type": "m.annotation",
+          "event_id": messageId,
+          "key": emoji
+        }
+      });
+      if (syncStateRef.current) {
+        syncStateRef.current();
+      }
+    } catch (err) {
+      console.error("Failed to send reaction via Matrix:", err);
+    }
+  };
+
   // Share contact card action
   const handleShareContactCard = async (cardData: any) => {
     if (!activeChatId || !matrixClient) return;
@@ -967,7 +1040,7 @@ export default function Home() {
   };
 
   // Group thread creation action
-  const handleConfirmGroupCreation = async () => {
+  const handleConfirmGroupCreation = async (enableE2EE?: boolean) => {
     if (selectedGroupContacts.length === 0 || !matrixClient) return;
 
     const trimmedGroupName = groupName.trim() || "New Room";
@@ -980,7 +1053,16 @@ export default function Home() {
         name: trimmedGroupName,
         invite: invitees,
         visibility: "private" as any,
-        preset: "private_chat" as any
+        preset: "private_chat" as any,
+        initial_state: enableE2EE ? [
+          {
+            type: "m.room.encryption",
+            state_key: "",
+            content: {
+              algorithm: "m.megolm.v1.aes-sha2"
+            }
+          }
+        ] : []
       });
 
       setActiveChatId(createResponse.room_id);
@@ -1164,6 +1246,7 @@ export default function Home() {
         onEditMessage={handleEditMessage}
         onRecallMessage={handleRecallMessage}
         onForwardMessage={handleForwardMessage}
+        onSendReaction={handleSendReaction}
       />
     </div>
   );
